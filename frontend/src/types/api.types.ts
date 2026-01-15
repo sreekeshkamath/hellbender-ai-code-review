@@ -1,5 +1,19 @@
 // API Types - matching backend models
 
+export interface LogEntry {
+  id: string;
+  timestamp: Date;
+  level: 'info' | 'success' | 'warning' | 'error';
+  message: string;
+}
+
+export interface FileSystemNode {
+  name: string;
+  path: string;
+  kind: 'file' | 'directory';
+  children?: FileSystemNode[];
+}
+
 export interface FileInfo {
   path: string;
   size: number;

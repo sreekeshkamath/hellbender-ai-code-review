@@ -30,68 +30,57 @@ export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorPro
   }
 
   return (
-    <Card className="border-none shadow-none bg-transparent">
-      <CardHeader className="px-0 pt-0 pb-4">
-        <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          AI Model Selection
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-0 space-y-4">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground ml-1">
-            Search Models
-          </label>
-          <Input
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div>
+          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block">Search Models</label>
+          <input
+            type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by name or provider..."
-            className="bg-background/50 border-muted-foreground/20 focus:border-primary/50 transition-colors"
+            className="w-full bg-zinc-900/50 border border-zinc-800 px-3 py-2 text-[11px] font-mono focus:outline-none focus:border-zinc-500 focus:bg-zinc-900 transition-all text-zinc-200 placeholder:text-zinc-700"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
+          <button
             onClick={() => setShowCustomOnly(!showCustomOnly)}
-            variant={showCustomOnly ? "default" : "outline"}
-            size="sm"
-            className="h-7 text-[10px] px-2 uppercase tracking-tight"
+            className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest border transition-colors ${
+              showCustomOnly
+                ? 'bg-zinc-100 text-black border-white'
+                : 'border-zinc-800 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300'
+            }`}
           >
             Custom Models Only
-          </Button>
+          </button>
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground ml-1">
-            Select Model
-          </label>
-          <Select value={selectedModel} onValueChange={onModelChange}>
-            <SelectTrigger className="bg-background/50 border-muted-foreground/20">
-              <SelectValue placeholder="Choose a model..." />
-            </SelectTrigger>
-            <SelectContent>
-              {displayedModels.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-sm">{model.name}</span>
-                    <Badge variant="outline" className="ml-2 text-[9px] h-4 px-1 leading-none uppercase tracking-tighter">
-                      {model.provider}
-                    </Badge>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div>
+          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block">Select Model</label>
+          <select
+            value={selectedModel}
+            onChange={(e) => onModelChange(e.target.value)}
+            className="w-full bg-zinc-900 border border-zinc-800 px-3 py-2 text-[11px] font-mono focus:outline-none focus:border-zinc-500 transition-all text-zinc-200"
+          >
+            <option value="" className="bg-zinc-950">Choose a model...</option>
+            {displayedModels.map((model) => (
+              <option key={model.id} value={model.id} className="bg-zinc-950">
+                {model.name} ({model.provider})
+              </option>
+            ))}
+          </select>
         </div>
+      </div>
 
-        {selectedModel && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/5 border border-primary/10 animate-in">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <span className="text-[10px] font-medium text-primary-foreground/70 truncate">
-              Active: {models.find(m => m.id === selectedModel)?.name}
-            </span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {selectedModel && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded border border-white bg-white text-black">
+          <div className="w-1.5 h-1.5 rounded-full bg-black" />
+          <span className="text-[10px] font-mono truncate">
+            Active: {models.find(m => m.id === selectedModel)?.name}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }

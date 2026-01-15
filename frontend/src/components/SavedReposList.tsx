@@ -56,67 +56,56 @@ export function SavedReposList({ onLoad }: SavedReposListProps) {
   }
 
   return (
-    <Card className="border-none shadow-none bg-transparent">
-      <CardHeader className="px-0 pt-0 pb-4">
-        <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Saved Repositories
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-0">
-        {repos.length === 0 ? (
-          <div className="text-center py-8 rounded-xl border border-dashed bg-muted/20">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No saved archives</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {repos.map((repo) => (
-              <div
-                key={repo.id}
-                className="group relative p-3 rounded-xl border bg-card/50 hover:bg-muted/50 transition-all duration-300 overflow-hidden"
-              >
-                <div className="flex flex-col gap-2 relative z-10">
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold truncate group-hover:text-primary transition-colors">{repo.name}</h4>
-                    <p className="text-[9px] text-muted-foreground font-mono truncate opacity-60 uppercase tracking-tighter mt-0.5">{repo.url}</p>
+    <div className="space-y-6">
+      {repos.length === 0 ? (
+        <div className="text-center py-8 rounded border border-zinc-900 bg-zinc-950">
+          <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-tight">No saved archives</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {repos.map((repo) => (
+            <div
+              key={repo.id}
+              className="group relative p-3 rounded border border-zinc-900 bg-zinc-950 hover:border-zinc-700 transition-all duration-300 overflow-hidden"
+            >
+              <div className="flex flex-col gap-2 relative z-10">
+                <div className="min-w-0">
+                  <h4 className="text-[10px] font-mono truncate text-zinc-300 group-hover:text-white transition-colors">{repo.name}</h4>
+                  <p className="text-[9px] text-zinc-700 font-mono truncate uppercase tracking-tighter mt-0.5">{repo.url}</p>
+                </div>
+
+                <div className="flex items-center justify-between mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[8px] font-mono px-1 py-0.5 bg-zinc-800 text-zinc-400 uppercase tracking-tighter">
+                      {repo.branch}
+                    </span>
+                    {repo.cloned && (
+                      <span className="text-[8px] font-mono px-1 py-0.5 bg-green-900 text-green-400 uppercase tracking-tighter">
+                        Local
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between mt-1">
-                    <div className="flex items-center gap-1.5">
-                      <Badge variant="outline" className="text-[8px] h-3 px-1 leading-none font-black uppercase tracking-tighter">
-                        {repo.branch}
-                      </Badge>
-                      {repo.cloned && (
-                        <Badge variant="secondary" className="text-[8px] h-3 px-1 leading-none font-black uppercase tracking-tighter bg-green-500/10 text-green-500 border-green-500/20">
-                          Local
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        onClick={() => handleLoad(repo)}
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-[9px] font-bold uppercase tracking-widest hover:bg-primary/20 hover:text-primary"
-                      >
-                        Load
-                      </Button>
-                      <Button
-                        onClick={() => handleDelete(repo.id)}
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-[9px] font-bold uppercase tracking-widest hover:bg-destructive/20 hover:text-destructive"
-                      >
-                        Del
-                      </Button>
-                    </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleLoad(repo)}
+                      className="px-2 py-1 text-[9px] font-black uppercase tracking-widest border border-zinc-800 text-zinc-500 hover:border-white hover:text-white transition-colors"
+                    >
+                      Load
+                    </button>
+                    <button
+                      onClick={() => handleDelete(repo.id)}
+                      className="px-2 py-1 text-[9px] font-black uppercase tracking-widest border border-zinc-800 text-zinc-500 hover:border-red-600 hover:text-red-400 transition-colors"
+                    >
+                      Del
+                    </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

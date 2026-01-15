@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { AnalysisResult } from '../types/api.types';
 
 interface ResultCardProps {
@@ -118,27 +117,29 @@ export function ResultCard({ result }: ResultCardProps) {
                           {issue.severity}
                         </span>
                       </div>
-                      <p className="text-sm font-medium mb-3 leading-snug">{issue.message}</p>
+                       <p className="text-sm font-medium mb-3 leading-snug">
+                         {'message' in issue ? (issue as any).message : `${issue.type} vulnerability detected`}
+                       </p>
 
-                      {issue.code && (
-                        <div className="rounded-xl overflow-hidden border border-white/5 shadow-2xl">
-                          <div className="bg-zinc-900 px-3 py-1 flex items-center justify-between">
-                            <span className="text-[9px] font-mono text-zinc-500 uppercase">Current Implementation</span>
-                          </div>
-                          <pre className="text-[11px] bg-black text-zinc-300 p-4 overflow-x-auto font-mono leading-relaxed">
-                            <code>{issue.code}</code>
-                          </pre>
-                        </div>
-                      )}
+                       {issue.code && (
+                         <div className="rounded-xl overflow-hidden border border-white/5 shadow-2xl">
+                           <div className="bg-zinc-900 px-3 py-1 flex items-center justify-between">
+                             <span className="text-[9px] font-mono text-zinc-500 uppercase">Current Implementation</span>
+                           </div>
+                           <pre className="text-[11px] bg-black text-zinc-300 p-4 overflow-x-auto font-mono leading-relaxed">
+                             <code>{issue.code}</code>
+                           </pre>
+                         </div>
+                       )}
 
-                      {issue.suggestion && (
-                        <div className="mt-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-primary mb-1">AI Recommendation</p>
-                          <p className="text-xs text-muted-foreground leading-relaxed italic">
-                            {issue.suggestion}
-                          </p>
-                        </div>
-                      )}
+                       {'suggestion' in issue && (issue as any).suggestion && (
+                         <div className="mt-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
+                           <p className="text-[9px] font-black uppercase tracking-widest text-primary mb-1">AI Recommendation</p>
+                           <p className="text-xs text-muted-foreground leading-relaxed italic">
+                             {(issue as any).suggestion}
+                           </p>
+                         </div>
+                       )}
                     </div>
                   ))}
                 </div>
