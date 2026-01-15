@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { RepositoryController } from '../controllers/RepositoryController';
+
+const router = Router();
+
+router.post('/clone', RepositoryController.clone);
+router.post('/sync/:repoId', RepositoryController.sync);
+router.get('/files/:repoId', RepositoryController.getFiles);
+router.get('/file/:repoId/*', RepositoryController.getFile);
+router.delete('/:repoId', RepositoryController.delete);
+
+export default router;
