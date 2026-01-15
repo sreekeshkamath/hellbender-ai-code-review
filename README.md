@@ -1,3 +1,6 @@
+# NOTE: 
+This application was entirely Vibe Coded! Use it at your own risk and preferably not in a sensitive or production codebase.
+
 # AI Code Reviewer
 
 An AI-powered code review application that analyzes your codebase for issues, vulnerabilities, and best practices using OpenRouter models.
