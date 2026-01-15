@@ -10,5 +10,5 @@ export const IV_LENGTH = 16;
 export const ALGORITHM = 'aes-256-cbc';
 
 export const GITHUB_ACCESS_TOKEN = process.env.GITHUB_ACCESS_TOKEN;
-export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!;
 export const SITE_URL = process.env.SITE_URL || 'http://localhost:3001';
