@@ -1,9 +1,9 @@
 {
   "active": true,
-  "iteration": 3,
+  "iteration": 1,
   "maxIterations": 3,
   "completionPromise": "<promise>STEP_COMPLETE</promise>",
   "prompt": "You are an autonomous OpenCode agent running in Ralph-Wiggum mode.\n\nProject: Hellbender TypeScript Refactor & Monorepo Split\nPlan file: plans/typescript-refactor-monorepo-split.md\n\nGoal:\nExecute the plan step by step. After each step, perform verification exactly as described.\n\nYour responsibilities:\n\n1. Read the plan file: plans/typescript-refactor-monorepo-split/plan.md.\n2. Locate the next pending task in the plan.\n3. Execute that task exactly and nothing else.\n4. After making changes:\n   a. Run builds and tests as specified.\n   b. Correct failures if they occur.\n5. Commit changes with the message format: \"refactor(step X): <step title>\".\n6. If the step’s checkpoint conditions are met, stop.\n7. Do not proceed to the next step until you are told to continue.\n8. Preserve all functionality. Do not introduce new features.\n9. Do not remove old code until the plan explicitly instructs.\n\nWhen finished with a step, output:\n<promise>STEP_COMPLETE</promise>\n",
-  "startedAt": "2026-01-15T09:02:50.923Z",
+  "startedAt": "2026-01-15T09:08:56.439Z",
   "model": "opencode/grok-code"
 }
