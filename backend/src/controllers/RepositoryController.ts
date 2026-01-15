@@ -38,7 +38,8 @@ export class RepositoryController {
 
   static getFile(req: Request, res: Response): void {
     try {
-      const { repoId, path: filePath } = req.params;
+      const { repoId } = req.params;
+      const filePath = req.params[0];
       const content = RepositoryService.getFile(repoId, filePath);
       res.json({ content });
     } catch (error) {

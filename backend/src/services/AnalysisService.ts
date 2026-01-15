@@ -1,23 +1,21 @@
 const OpenAI = require('openai');
-import { AnalysisResult } from '../models/AnalysisResult';
-import { VulnerabilityScanner } from './VulnerabilityScanner';
-import { OPENROUTER_API_KEY, SITE_URL } from '../config/constants';
-
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: OPENROUTER_API_KEY as string,
-  defaultHeaders: {
-    'HTTP-Referer': SITE_URL,
-    'X-Title': 'AI Code Reviewer'
-  }
-});
 
 export class AnalysisService {
-  static async analyzeCode(content: string, filePath: string, model: string): Promise<Omit<AnalysisResult, 'file'>> {
-    if (!OPENROUTER_API_KEY) {
+  static async analyzeCode(content: string, filePath: string, model: string): Promise<any> {
+    if (!process.env.OPENROUTER_API_KEY) {
       throw new Error('OPENROUTER_API_KEY environment variable is required');
     }
-    const vulnerabilities = VulnerabilityScanner.detectVulnerabilities(content);
+
+    const openai = new (OpenAI as any)({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3001',
+        'X-Title': 'AI Code Reviewer'
+      }
+    });
+
+    const vulnerabilities = require('./VulnerabilityScanner').VulnerabilityScanner.detectVulnerabilities(content);
 
     const prompt = `You are an expert code reviewer. Analyze the following code and provide a detailed review:
 
