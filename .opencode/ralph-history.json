@@ -1,29 +1,6 @@
 {
-  "iterations": [
-    {
-      "iteration": 1,
-      "startedAt": "2026-01-15T08:02:53.404Z",
-      "endedAt": "2026-01-15T08:05:22.181Z",
-      "durationMs": 148553,
-      "toolsUsed": {
-        "Glob": 1,
-        "Read": 2,
-        "Todo": 2,
-        "Bash": 7,
-        "Write": 2
-      },
-      "filesModified": [
-        ".opencode/",
-        "backend/package-lock.json",
-        "backend/package.json",
-        "backend/tsconfig.json"
-      ],
-      "exitCode": 0,
-      "completionDetected": false,
-      "errors": []
-    }
-  ],
-  "totalDurationMs": 148553,
+  "iterations": [],
+  "totalDurationMs": 0,
   "struggleIndicators": {
     "repeatedErrors": {},
     "noProgressIterations": 0,
