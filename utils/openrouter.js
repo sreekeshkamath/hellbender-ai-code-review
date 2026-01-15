@@ -33,7 +33,7 @@ const VULNERABILITY_PATTERNS = [
 
 async function analyzeCode(content, filePath, model) {
   const vulnerabilities = detectVulnerabilities(content);
-  
+
   const prompt = `You are an expert code reviewer. Analyze the following code and provide a detailed review:
 
 File: ${filePath}
@@ -49,7 +49,7 @@ Please provide your analysis in the following JSON format:
       "type": "bug|performance|style|security|bestpractice",
       "severity": "low|medium|high|critical",
       "message": "<brief description>",
-      "code": "<the exact line or snippet of code where the issue is found>",
+      "code": "<the exact line or snippet of code where the issue is found, INCLUDING 2-3 lines of surrounding context for better understanding>",
       "suggestion": "<how to fix>"
     }
   ],
@@ -92,7 +92,7 @@ Return ONLY valid JSON, no markdown formatting.`;
     };
   } catch (error) {
     console.error('OpenRouter API error:', error);
-    
+
     return {
       score: 70,
       issues: [],
@@ -111,11 +111,20 @@ function detectVulnerabilities(content) {
   VULNERABILITY_PATTERNS.forEach(({ pattern, severity, type }) => {
     lines.forEach((line, index) => {
       if (pattern.test(line)) {
+        // Get surrounding context (2 lines before and after)
+        const start = Math.max(0, index - 2);
+        const end = Math.min(lines.length - 1, index + 2);
+        const contextCode = lines.slice(start, end + 1).map((l, i) => {
+          const lineNum = start + i + 1;
+          const marker = lineNum === index + 1 ? '> ' : '  ';
+          return `${marker}${lineNum.toString().padStart(4)} | ${l}`;
+        }).join('\n');
+
         vulnerabilities.push({
           line: index + 1,
           type,
           severity,
-          code: line.trim().substring(0, 100)
+          code: contextCode
         });
       }
     });
