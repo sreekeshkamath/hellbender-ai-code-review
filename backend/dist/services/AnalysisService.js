@@ -2,22 +2,20 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AnalysisService = void 0;
 const OpenAI = require('openai');
-const VulnerabilityScanner_1 = require("./VulnerabilityScanner");
-const constants_1 = require("../config/constants");
-const openai = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: constants_1.OPENROUTER_API_KEY,
-    defaultHeaders: {
-        'HTTP-Referer': constants_1.SITE_URL,
-        'X-Title': 'AI Code Reviewer'
-    }
-});
 class AnalysisService {
     static async analyzeCode(content, filePath, model) {
-        if (!constants_1.OPENROUTER_API_KEY) {
+        if (!process.env.OPENROUTER_API_KEY) {
             throw new Error('OPENROUTER_API_KEY environment variable is required');
         }
-        const vulnerabilities = VulnerabilityScanner_1.VulnerabilityScanner.detectVulnerabilities(content);
+        const openai = new OpenAI({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: process.env.OPENROUTER_API_KEY,
+            defaultHeaders: {
+                'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3001',
+                'X-Title': 'AI Code Reviewer'
+            }
+        });
+        const vulnerabilities = require('./VulnerabilityScanner').VulnerabilityScanner.detectVulnerabilities(content);
         const prompt = `You are an expert code reviewer. Analyze the following code and provide a detailed review:
 
 File: ${filePath}

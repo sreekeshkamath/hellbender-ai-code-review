@@ -39,7 +39,8 @@ class RepositoryController {
     }
     static getFile(req, res) {
         try {
-            const { repoId, path: filePath } = req.params;
+            const { repoId } = req.params;
+            const filePath = req.params[0];
             const content = RepositoryService_1.RepositoryService.getFile(repoId, filePath);
             res.json({ content });
         }

@@ -42,13 +42,15 @@ export function RepositoryConfig() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Repository Configuration</CardTitle>
+    <Card className="border-none shadow-none bg-transparent">
+      <CardHeader className="px-0 pt-0 pb-4">
+        <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Repository Configuration
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">
+      <CardContent className="px-0 space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground ml-1">
             Repository URL
           </label>
           <Input
@@ -56,11 +58,12 @@ export function RepositoryConfig() {
             onChange={(e) => setRepoUrl(e.target.value)}
             placeholder="https://github.com/username/repo"
             disabled={isLoading}
+            className="bg-background/50 border-muted-foreground/20 focus:border-primary/50 transition-colors"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground ml-1">
             Branch
           </label>
           <Input
@@ -68,32 +71,43 @@ export function RepositoryConfig() {
             onChange={(e) => setBranch(e.target.value)}
             placeholder="main"
             disabled={isLoading}
+            className="bg-background/50 border-muted-foreground/20 focus:border-primary/50 transition-colors"
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-2">
           <Button
             onClick={handleClone}
             disabled={!repoUrl.trim() || !isValidUrl(repoUrl) || isLoading}
-            className="flex-1"
+            className="flex-1 shadow-sm"
+            size="sm"
           >
-            {isLoading ? 'Cloning...' : 'Clone Repository'}
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                Cloning...
+              </span>
+            ) : 'Clone Repo'}
           </Button>
 
           <Button
             onClick={handleSync}
             disabled={!repoId || !repoUrl.trim() || !isValidUrl(repoUrl) || isLoading}
             variant="outline"
-            className="flex-1"
+            className="flex-1 bg-background/50"
+            size="sm"
           >
-            {isLoading ? 'Syncing...' : 'Sync Repository'}
+            {isLoading ? 'Syncing...' : 'Sync Repo'}
           </Button>
         </div>
 
         {repoId && (
-          <p className="text-sm text-green-600">
-            Repository loaded (ID: {repoId})
-          </p>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-500/10 border border-green-500/20 text-green-500 animate-in">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] font-medium truncate">
+              Connected: {repoId.split('-')[0]}...
+            </span>
+          </div>
         )}
       </CardContent>
     </Card>
