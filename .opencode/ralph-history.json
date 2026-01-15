@@ -1,9 +1,26 @@
 {
-  "iterations": [],
-  "totalDurationMs": 0,
+  "iterations": [
+    {
+      "iteration": 1,
+      "startedAt": "2026-01-15T09:20:47.994Z",
+      "endedAt": "2026-01-15T09:21:58.972Z",
+      "durationMs": 70574,
+      "toolsUsed": {
+        "Glob": 1,
+        "Read": 1,
+        "Todo": 2,
+        "Bash": 4
+      },
+      "filesModified": [],
+      "exitCode": 0,
+      "completionDetected": false,
+      "errors": []
+    }
+  ],
+  "totalDurationMs": 70574,
   "struggleIndicators": {
     "repeatedErrors": {},
-    "noProgressIterations": 0,
+    "noProgressIterations": 1,
     "shortIterations": 0
   }
 }
