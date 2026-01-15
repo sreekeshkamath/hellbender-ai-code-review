@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Code2, Github, AlertTriangle, CheckCircle, XCircle, FileText, ChevronDown, ChevronUp, Trash2, RefreshCw, Search, Zap, Star, Save, FolderGit2, Terminal, Activity, Sparkles, Shield, TrendingUp } from 'lucide-react'
+import { Code2, Github, AlertTriangle, CheckCircle, XCircle, FileText, ChevronDown, ChevronUp, Trash2, RefreshCw, Search, Zap, Star, Save, FolderGit2, Terminal, Activity, Sparkles, Shield, TrendingUp, LayoutGrid, Layers, ChevronLeft, ChevronRight } from 'lucide-react'
 import axios from 'axios'
 
 const API_BASE = 'http://localhost:3001/api'
@@ -24,6 +24,12 @@ function App() {
   const [branch, setBranch] = useState('')
   const [selectedModel, setSelectedModel] = useState('')
   const [models, setModels] = useState([])
+  const [customModels, setCustomModels] = useState(() => {
+    const saved = localStorage.getItem('custom_models')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [newModelId, setNewModelId] = useState('')
+  const [newModelName, setNewModelName] = useState('')
   const [filteredModels, setFilteredModels] = useState([])
   const [modelSearch, setModelSearch] = useState('')
   const [showFreeOnly, setShowFreeOnly] = useState(false)
@@ -43,6 +49,8 @@ function App() {
   const [selectOpen, setSelectOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(320)
   const [isResizing, setIsResizing] = useState(false)
+  const [viewMode, setViewMode] = useState('scroll') // 'scroll' or 'slide'
+  const [currentSlide, setCurrentSlide] = useState(0)
   const selectRef = useRef(null)
 
   useEffect(() => {
@@ -128,19 +136,53 @@ function App() {
   const fetchModels = async () => {
     try {
       const response = await axios.get(`${API_BASE}/review/models`)
-      const allModels = [...HARDCODED_MODELS, ...response.data]
+      const allModels = [...HARDCODED_MODELS, ...response.data, ...customModels]
       setModels(allModels)
       setFilteredModels(allModels)
-      if (allModels.length > 0) {
+      if (allModels.length > 0 && !selectedModel) {
         setSelectedModel(allModels[0].id)
       }
     } catch (err) {
-      setModels(HARDCODED_MODELS)
-      setFilteredModels(HARDCODED_MODELS)
-      if (HARDCODED_MODELS.length > 0) {
-        setSelectedModel(HARDCODED_MODELS[0].id)
+      console.error('Failed to fetch models:', err)
+      addToLog('error', `Failed to fetch models: ${err.message}. Showing default models only.`)
+      const allModels = [...HARDCODED_MODELS, ...customModels]
+      setModels(allModels)
+      setFilteredModels(allModels)
+      if (allModels.length > 0 && !selectedModel) {
+        setSelectedModel(allModels[0].id)
       }
     }
+  }
+
+  const addCustomModel = () => {
+    if (!newModelId) return
+    const id = newModelId.trim()
+    const name = newModelName.trim() || id.split('/').pop()
+
+    if (models.some(m => m.id === id)) {
+      addToLog('warning', `Model ${id} already exists`)
+      return
+    }
+
+    const newModel = { id, name, provider: 'Custom', price: 'paid' }
+    const updatedCustom = [...customModels, newModel]
+    setCustomModels(updatedCustom)
+    localStorage.setItem('custom_models', JSON.stringify(updatedCustom))
+
+    setModels(prev => [...prev, newModel])
+    setSelectedModel(id)
+    setNewModelId('')
+    setNewModelName('')
+    addToLog('success', `Added custom model: ${name}`)
+  }
+
+  const removeCustomModel = (id, e) => {
+    e.stopPropagation()
+    const updatedCustom = customModels.filter(m => m.id !== id)
+    setCustomModels(updatedCustom)
+    localStorage.setItem('custom_models', JSON.stringify(updatedCustom))
+    setModels(prev => prev.filter(m => m.id !== id))
+    addToLog('info', `Removed custom model: ${id}`)
   }
 
   const fetchSavedRepos = async () => {
@@ -178,13 +220,13 @@ function App() {
       setRepoId(response.data.repoId)
       setFiles(response.data.files || [])
       console.log('Cloned files:', response.data.files?.length || 0)
-      
+
       if (response.data.cached) {
         addToLog('info', `Using cached repository (${response.data.files?.length || 0} files)`)
       } else {
         addToLog('success', `Successfully cloned ${response.data.files?.length || 0} files`)
       }
-      
+
       if (!response.data.files || response.data.files.length === 0) {
         addToLog('warning', 'No files found in repository')
       }
@@ -228,11 +270,11 @@ function App() {
 
     const modelInfo = models.find(m => m.id === selectedModel)
     addToLog('ai', `Initializing analysis for ${selectedFiles.length} files...`)
-    
+
     try {
       addToLog('ai', `Connecting to ${modelInfo?.name || selectedModel} engine...`)
       addToLog('info', `Streaming source code to AI context...`)
-      
+
       const response = await axios.post(`${API_BASE}/review/analyze`, {
         repoId,
         model: selectedModel,
@@ -286,7 +328,7 @@ function App() {
     setRepoUrl(repo.url)
     setBranch(repo.branch)
     addToLog('info', `Loaded repository: ${repo.name}`)
-    
+
     // If the repo has been cloned before, load it directly
     if (repo.cloned && repo.repoId) {
       setLoading(true)
@@ -295,10 +337,10 @@ function App() {
           repoUrl: repo.url,
           branch: repo.branch || 'main'
         })
-        
+
         setRepoId(response.data.repoId)
         setFiles(response.data.files || [])
-        
+
         if (response.data.cached) {
           addToLog('success', `Loaded cached repository (${response.data.files?.length || 0} files)`)
         } else {
@@ -366,7 +408,7 @@ function App() {
           </div>
           <div>
             <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              AI CODE REVIEWER
+              HELLBENDER AI CODE REVIEW
             </h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">Autonomous Security Analysis</p>
           </div>
@@ -374,8 +416,8 @@ function App() {
         <button
           onClick={() => setActivityExpanded(!activityExpanded)}
           className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-sm font-semibold border ${
-            activityExpanded 
-              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30' 
+            activityExpanded
+              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30'
               : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
           }`}
         >
@@ -415,7 +457,7 @@ function App() {
 
       <main className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside 
+        <aside
           style={{ width: `${sidebarWidth}px` }}
           className="flex-shrink-0 border-r border-slate-700/30 bg-[#0f172a] overflow-y-auto custom-scrollbar relative"
         >
@@ -432,8 +474,8 @@ function App() {
                       key={repo.id}
                       onClick={() => loadSavedRepo(repo)}
                       className={`group p-3 rounded-xl border transition-all cursor-pointer ${
-                        repoUrl === repo.url 
-                          ? 'bg-indigo-500/10 border-indigo-500/50 shadow-lg shadow-indigo-500/5' 
+                        repoUrl === repo.url
+                          ? 'bg-indigo-500/10 border-indigo-500/50 shadow-lg shadow-indigo-500/5'
                           : 'bg-slate-800/20 border-slate-700/30 hover:border-slate-600 hover:bg-slate-800/40'
                       }`}
                     >
@@ -464,7 +506,7 @@ function App() {
               <div className="flex items-center gap-2 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">
                 <Search className="h-3 w-3" /> Configuration
               </div>
-              
+
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target URL</label>
@@ -507,13 +549,13 @@ function App() {
                     'CLONE REPOSITORY'
                   )}
                 </button>
-                
+
                 {files.length > 0 && (
                   <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 font-bold text-center">
                     ✓ {files.length} files ready for analysis
                   </div>
                 )}
-                
+
                 {repoId && (
                   <div className="p-2 bg-slate-900/50 border border-slate-700/30 rounded-lg text-[10px] text-slate-500 text-center font-mono">
                     Repo ID: {repoId.slice(0, 8)}...
@@ -538,24 +580,80 @@ function App() {
                 <div className="flex items-center gap-2 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">
                   <Zap className="h-3 w-3" /> Analysis Model
                 </div>
-                
+
                 <div className="relative" ref={selectRef}>
                   <button onClick={() => setSelectOpen(!selectOpen)} className="w-full p-4 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-between text-xs font-bold text-slate-300">
-                    {selectedModelData?.name || 'Select Engine'}
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-3.5 w-3.5 text-indigo-400" />
+                      {selectedModelData?.name || 'Select Engine'}
+                    </div>
                     <ChevronDown className={`h-4 w-4 transition-transform ${selectOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {selectOpen && (
-                    <div className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50">
-                      <div className="max-h-48 overflow-y-auto">
-                        {filteredModels.map(model => (
+                    <div className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 flex flex-col max-h-[400px]">
+                      <div className="p-2 border-b border-slate-700/50">
+                        <input
+                          type="text"
+                          placeholder="Search models..."
+                          value={modelSearch}
+                          onChange={(e) => setModelSearch(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500/50"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      <div className="overflow-y-auto flex-1 custom-scrollbar">
+                        {filteredModels.length === 0 ? (
+                          <div className="p-4 text-center text-[10px] text-slate-500 italic">No models found</div>
+                        ) : (
+                          filteredModels.map(model => (
+                            <div
+                              key={model.id}
+                              onClick={() => { setSelectedModel(model.id); setSelectOpen(false); }}
+                              className={`group w-full p-3 text-left text-xs font-bold hover:bg-indigo-600 transition-colors border-b border-slate-700/50 last:border-0 cursor-pointer flex items-center justify-between ${selectedModel === model.id ? 'bg-indigo-600/20 text-indigo-400' : 'text-slate-400'}`}
+                            >
+                              <div className="flex flex-col">
+                                <span>{model.name}</span>
+                                <span className="text-[9px] opacity-50 font-mono">{model.id}</span>
+                              </div>
+                              {customModels.some(cm => cm.id === model.id) && (
+                                <button
+                                  onClick={(e) => removeCustomModel(model.id, e)}
+                                  className="p-1 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                  <XCircle className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="p-3 bg-slate-900/50 border-t border-slate-700/50 space-y-2">
+                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Add Custom Model</div>
+                        <input
+                          type="text"
+                          placeholder="Model ID (e.g. anthropic/claude-3-opus)"
+                          value={newModelId}
+                          onChange={(e) => setNewModelId(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-[10px] text-slate-300 outline-none"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Friendly Name (Optional)"
+                            value={newModelName}
+                            onChange={(e) => setNewModelName(e.target.value)}
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-[10px] text-slate-300 outline-none"
+                            onClick={(e) => e.stopPropagation()}
+                          />
                           <button
-                            key={model.id}
-                            onClick={() => { setSelectedModel(model.id); setSelectOpen(false); }}
-                            className={`w-full p-4 text-left text-xs font-bold hover:bg-indigo-600 transition-colors border-b border-slate-700/50 last:border-0 ${selectedModel === model.id ? 'bg-indigo-600/20 text-indigo-400' : 'text-slate-400'}`}
+                            onClick={(e) => { e.stopPropagation(); addCustomModel(); }}
+                            disabled={!newModelId}
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold transition-all disabled:opacity-50"
                           >
-                            {model.name}
+                            ADD
                           </button>
-                        ))}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -602,7 +700,7 @@ function App() {
           </div>
 
           {/* Resize handle */}
-          <div 
+          <div
             onMouseDown={() => setIsResizing(true)}
             className={`absolute top-0 right-0 w-1 h-full cursor-col-resize transition-colors hover:bg-indigo-500/50 z-30 ${isResizing ? 'bg-indigo-500 w-0.5' : ''}`}
           />
@@ -645,11 +743,67 @@ function App() {
                 </div>
               </div>
 
-              <div className="space-y-6">
-                {results.results.map((result, idx) => (
-                  <ResultCard key={idx} result={result} getScoreColor={getScoreColor} />
-                ))}
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></div>
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Analysis Results</h3>
+                </div>
+                <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => setViewMode('scroll')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold transition-all ${viewMode === 'scroll' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    SCROLL
+                  </button>
+                  <button
+                    onClick={() => { setViewMode('slide'); setCurrentSlide(0); }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold transition-all ${viewMode === 'slide' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    SLIDE
+                  </button>
+                </div>
               </div>
+
+              {viewMode === 'scroll' ? (
+                <div className="space-y-6">
+                  {results.results.map((result, idx) => (
+                    <ResultCard key={idx} result={result} getScoreColor={getScoreColor} />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-6 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      File {currentSlide + 1} of {results.results.length}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
+                        disabled={currentSlide === 0}
+                        className="p-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 disabled:opacity-20 transition-all"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentSlide(prev => Math.min(results.results.length - 1, prev + 1))}
+                        disabled={currentSlide === results.results.length - 1}
+                        className="p-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 disabled:opacity-20 transition-all"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="animate-in slide-in-from-right-4 duration-300">
+                    <ResultCard
+                      result={results.results[currentSlide]}
+                      getScoreColor={getScoreColor}
+                      initiallyExpanded={true}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center space-y-6 text-slate-700">
@@ -669,8 +823,12 @@ function App() {
   )
 }
 
-function ResultCard({ result, getScoreColor }) {
-  const [expanded, setExpanded] = useState(true)
+function ResultCard({ result, getScoreColor, initiallyExpanded = true }) {
+  const [expanded, setExpanded] = useState(initiallyExpanded)
+
+  useEffect(() => {
+    setExpanded(initiallyExpanded)
+  }, [result, initiallyExpanded])
 
   return (
     <div className="bg-[#1e293b]/20 border border-slate-700/30 rounded-3xl overflow-hidden transition-all hover:border-slate-600/50 shadow-2xl">
@@ -712,11 +870,11 @@ function ResultCard({ result, getScoreColor }) {
                       <span className="text-xs text-slate-600 font-mono">Line {issue.line}</span>
                     </div>
                     <p className="text-sm text-slate-400 leading-relaxed mb-4">{issue.message}</p>
-                    
+
                     {issue.code && (
-                      <code className="block p-4 mb-4 rounded-xl bg-black/50 text-[11px] text-blue-300/80 font-mono leading-relaxed border border-slate-800 break-all overflow-x-auto">
+                      <pre className="block p-4 mb-4 rounded-xl bg-black/50 text-[11px] text-blue-300/80 font-mono leading-relaxed border border-slate-800 break-all overflow-x-auto whitespace-pre-wrap">
                         {issue.code}
-                      </code>
+                      </pre>
                     )}
 
                     {issue.suggestion && (
@@ -743,7 +901,7 @@ function ResultCard({ result, getScoreColor }) {
                       <span className="text-[10px] font-black bg-red-500 text-white px-2.5 py-1 rounded uppercase tracking-widest">{vuln.severity}</span>
                       <span className="text-sm font-bold text-slate-300">{vuln.type}</span>
                     </div>
-                    <code className="block p-4 rounded-xl bg-black text-[11px] text-red-300/80 font-mono leading-relaxed border border-red-900/30 break-all">{vuln.code}</code>
+                    <pre className="block p-4 rounded-xl bg-black text-[11px] text-red-300/80 font-mono leading-relaxed border border-red-900/30 break-all whitespace-pre-wrap">{vuln.code}</pre>
                   </div>
                 ))}
               </div>
