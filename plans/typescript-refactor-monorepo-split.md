@@ -154,7 +154,7 @@ hellbender-ai-code-review/
 
 ## Concrete Step-by-Step Execution Plan
 
-**IMPORTANT**: After completing each step, the agent will ask for your confirmation before proceeding to the next step. This ensures context is maintained and you can review progress incrementally.
+**IMPORTANT**: After completing each step, commit the changes with an appropriate message before proceeding. Then, the agent will ask for your confirmation to proceed to the next step. This ensures context is maintained and you can review progress incrementally.
 
 ### Step 1: Create Backend Directory Structure
 **Deliverable**: Empty directory structure created
