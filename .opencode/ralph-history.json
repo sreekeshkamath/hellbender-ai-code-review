@@ -1,66 +1,6 @@
 {
-  "iterations": [
-    {
-      "iteration": 1,
-      "startedAt": "2026-01-15T09:08:56.701Z",
-      "endedAt": "2026-01-15T09:09:52.871Z",
-      "durationMs": 55979,
-      "toolsUsed": {
-        "Glob": 1,
-        "Read": 1,
-        "Todo": 3,
-        "Bash": 4
-      },
-      "filesModified": [],
-      "exitCode": 0,
-      "completionDetected": false,
-      "errors": []
-    },
-    {
-      "iteration": 2,
-      "startedAt": "2026-01-15T09:09:54.172Z",
-      "endedAt": "2026-01-15T09:15:49.108Z",
-      "durationMs": 354612,
-      "toolsUsed": {
-        "Read": 13,
-        "Glob": 1,
-        "Todo": 3,
-        "Bash": 4,
-        "Write": 7,
-        "Grep": 1,
-        "Edit": 2
-      },
-      "filesModified": [
-        "backend/src/services/"
-      ],
-      "exitCode": 0,
-      "completionDetected": false,
-      "errors": []
-    },
-    {
-      "iteration": 3,
-      "startedAt": "2026-01-15T09:15:50.459Z",
-      "endedAt": "2026-01-15T09:17:45.896Z",
-      "durationMs": 115090,
-      "toolsUsed": {
-        "Glob": 7,
-        "Read": 7,
-        "Bash": 7,
-        "Todo": 1,
-        "Write": 2,
-        "Edit": 1
-      },
-      "filesModified": [
-        "backend/dist/",
-        "backend/src/config/constants.ts",
-        "backend/src/config/environment.ts"
-      ],
-      "exitCode": 0,
-      "completionDetected": false,
-      "errors": []
-    }
-  ],
-  "totalDurationMs": 525681,
+  "iterations": [],
+  "totalDurationMs": 0,
   "struggleIndicators": {
     "repeatedErrors": {},
     "noProgressIterations": 0,
