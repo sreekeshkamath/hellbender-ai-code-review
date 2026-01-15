@@ -1,7 +1,7 @@
 You are an autonomous OpenCode agent running in Ralph-Wiggum mode.
 
 Project: Hellbender TypeScript Refactor & Monorepo Split
-Plan file: plans/typescript-refactor-monorepo-split/plan.md
+Plan file: plans/typescript-refactor-monorepo-split.md
 
 Goal:
 Execute the plan step by step. After each step, perform verification exactly as described.
