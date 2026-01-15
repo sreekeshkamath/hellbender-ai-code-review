@@ -68,6 +68,8 @@ const repoStore = {
       name: repo.name || repo.url.split('/').pop().replace('.git', ''),
       url: repo.url,
       branch: repo.branch || 'main',
+      repoId: repo.repoId || null,
+      cloned: repo.cloned || false,
       createdAt: new Date().toISOString(),
       lastUsed: null
     };

@@ -28,7 +28,7 @@ const isValidRepoUrl = (url) => {
 
 router.post('/', (req, res) => {
   try {
-    const { url, branch, name } = req.body;
+    const { url, branch, name, repoId, cloned } = req.body;
     
     if (!url) {
       return res.status(400).json({ error: 'Repository URL is required' });
@@ -42,11 +42,19 @@ router.post('/', (req, res) => {
     const existing = repos.find(r => r.url.toLowerCase() === url.toLowerCase() && r.branch === (branch || 'main'));
     
     if (existing) {
+      // Update the existing repo with new repoId and cloned status if provided
+      if (repoId || cloned !== undefined) {
+        const updates = {};
+        if (repoId) updates.repoId = repoId;
+        if (cloned !== undefined) updates.cloned = cloned;
+        repoStore.update(existing.id, updates);
+      }
       repoStore.touch(existing.id);
-      return res.json({ repo: existing, message: 'Repository already saved' });
+      const updated = repoStore.getAll().find(r => r.id === existing.id);
+      return res.json({ repo: updated, message: 'Repository already saved' });
     }
 
-    const repo = repoStore.add({ url, branch, name });
+    const repo = repoStore.add({ url, branch, name, repoId, cloned });
     res.json({ repo, message: 'Repository saved successfully' });
   } catch (error) {
     console.error('Error saving repo:', error);

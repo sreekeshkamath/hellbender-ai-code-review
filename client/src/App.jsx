@@ -41,12 +41,38 @@ function App() {
   const [activityLog, setActivityLog] = useState([])
   const [activityExpanded, setActivityExpanded] = useState(false)
   const [selectOpen, setSelectOpen] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(320)
+  const [isResizing, setIsResizing] = useState(false)
   const selectRef = useRef(null)
 
   useEffect(() => {
     fetchModels()
     fetchSavedRepos()
   }, [])
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return
+      const newWidth = e.clientX
+      if (newWidth > 200 && newWidth < 600) {
+        setSidebarWidth(newWidth)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
 
   useEffect(() => {
     if (models.length > 0) {
@@ -198,18 +224,30 @@ function App() {
 
     setAnalyzing(true)
     setError(null)
+    setResults(null)
 
+    const modelInfo = models.find(m => m.id === selectedModel)
+    addToLog('ai', `Initializing analysis for ${selectedFiles.length} files...`)
+    
     try {
+      addToLog('ai', `Connecting to ${modelInfo?.name || selectedModel} engine...`)
+      addToLog('info', `Streaming source code to AI context...`)
+      
       const response = await axios.post(`${API_BASE}/review/analyze`, {
         repoId,
         model: selectedModel,
         files: selectedFiles.map(f => ({ path: f.path }))
       })
 
+      addToLog('ai', `Processing AI response and extracting insights...`)
       setResults(response.data)
-      addToLog('success', `Review complete! Score: ${response.data.summary.overallScore}/100`)
+      addToLog('success', `Review complete! Security Rating: ${response.data.summary.overallScore}/100`)
+      addToLog('info', `Detected ${response.data.summary.vulnerabilityCount} risks and ${response.data.results.reduce((acc, r) => acc + (r.issues?.length || 0), 0)} quality issues.`)
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to analyze code')
+      console.error('Analysis error:', err)
+      const errorMsg = err.response?.data?.error || 'Failed to analyze code'
+      addToLog('error', `Analysis Failed: ${errorMsg}`)
+      setError(errorMsg)
     } finally {
       setAnalyzing(false)
     }
@@ -221,9 +259,12 @@ function App() {
       await axios.post(`${API_BASE}/saved-repos`, {
         url: repoUrl,
         branch: branch || 'main',
-        name: saveName || undefined
+        name: saveName || undefined,
+        repoId: repoId || undefined,
+        cloned: repoId ? true : false
       })
       setShowSaveForm(false)
+      setSaveName('')
       fetchSavedRepos()
       addToLog('success', 'Repository saved successfully')
     } catch (err) {
@@ -241,10 +282,35 @@ function App() {
     }
   }
 
-  const loadSavedRepo = (repo) => {
+  const loadSavedRepo = async (repo) => {
     setRepoUrl(repo.url)
     setBranch(repo.branch)
     addToLog('info', `Loaded repository: ${repo.name}`)
+    
+    // If the repo has been cloned before, load it directly
+    if (repo.cloned && repo.repoId) {
+      setLoading(true)
+      try {
+        const response = await axios.post(`${API_BASE}/repo/clone`, {
+          repoUrl: repo.url,
+          branch: repo.branch || 'main'
+        })
+        
+        setRepoId(response.data.repoId)
+        setFiles(response.data.files || [])
+        
+        if (response.data.cached) {
+          addToLog('success', `Loaded cached repository (${response.data.files?.length || 0} files)`)
+        } else {
+          addToLog('success', `Repository loaded (${response.data.files?.length || 0} files)`)
+        }
+      } catch (err) {
+        console.error('Load error:', err)
+        addToLog('error', 'Failed to load repository')
+      } finally {
+        setLoading(false)
+      }
+    }
   }
 
   const toggleFileSelection = (file) => {
@@ -349,7 +415,10 @@ function App() {
 
       <main className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-80 flex-shrink-0 border-r border-slate-700/30 bg-[#0f172a] overflow-y-auto custom-scrollbar">
+        <aside 
+          style={{ width: `${sidebarWidth}px` }}
+          className="flex-shrink-0 border-r border-slate-700/30 bg-[#0f172a] overflow-y-auto custom-scrollbar relative"
+        >
           <div className="p-6 space-y-8">
             {/* Saved Repos */}
             {savedRepos.length > 0 && (
@@ -370,7 +439,14 @@ function App() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold text-slate-200 truncate">{repo.name}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs font-bold text-slate-200 truncate">{repo.name}</div>
+                            {repo.cloned && (
+                              <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-black rounded uppercase tracking-wider border border-emerald-500/30">
+                                Cached
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-slate-500 mt-0.5 font-mono">{repo.branch}</div>
                         </div>
                         <button onClick={(e) => deleteSavedRepo(repo.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-all">
@@ -501,6 +577,7 @@ function App() {
                         <div
                           key={file.path}
                           onClick={() => toggleFileSelection(file)}
+                          title={file.path}
                           className={`p-2.5 rounded-lg text-[10px] font-mono cursor-pointer transition-all flex items-center gap-3 ${
                             selectedFiles.find(f => f.path === file.path) ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-800'
                           }`}
@@ -523,10 +600,34 @@ function App() {
               </div>
             )}
           </div>
+
+          {/* Resize handle */}
+          <div 
+            onMouseDown={() => setIsResizing(true)}
+            className={`absolute top-0 right-0 w-1 h-full cursor-col-resize transition-colors hover:bg-indigo-500/50 z-30 ${isResizing ? 'bg-indigo-500 w-0.5' : ''}`}
+          />
         </aside>
 
         {/* Content Area */}
         <section className="flex-1 bg-[#020617] overflow-y-auto relative custom-scrollbar">
+          {analyzing && (
+            <div className="absolute inset-0 z-20 bg-[#020617]/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-6 animate-in">
+              <div className="relative">
+                <div className="h-24 w-24 rounded-full border-4 border-slate-800 border-t-indigo-500 animate-spin" />
+                <Sparkles className="h-8 w-8 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-400 animate-pulse" />
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-black text-white uppercase tracking-widest text-shadow-glow">Autonomous Review In Progress</h3>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em]">Model: {selectedModelData?.name || selectedModel}</p>
+                <div className="flex gap-1 justify-center pt-4">
+                  <div className="h-1 w-8 bg-indigo-500 animate-pulse rounded-full" />
+                  <div className="h-1 w-8 bg-indigo-500 animate-pulse delay-75 rounded-full" />
+                  <div className="h-1 w-8 bg-indigo-500 animate-pulse delay-150 rounded-full" />
+                </div>
+              </div>
+            </div>
+          )}
+
           {results ? (
             <div className="p-10 max-w-5xl mx-auto space-y-10 animate-in">
               <div className="grid grid-cols-3 gap-6">
