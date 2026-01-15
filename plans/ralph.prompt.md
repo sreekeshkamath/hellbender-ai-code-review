@@ -19,6 +19,7 @@ Your responsibilities:
 7. Do not proceed to the next step until you are told to continue.
 8. Preserve all functionality. Do not introduce new features.
 9. Do not remove old code until the plan explicitly instructs.
+10. Never commit unless a plan step is fully completed and verified.
 
 When finished with a step, output:
 <promise>STEP_COMPLETE</promise>
