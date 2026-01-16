@@ -8,7 +8,7 @@ import { FileService } from './FileService';
 import { RepositoryMappingService } from './RepositoryMappingService';
 import { REPOS_DIR, GITHUB_ACCESS_TOKEN } from '../config/constants';
 import { GitErrorParser } from '../utils/GitErrorParser';
-import { validateRepoPath, validateFilePath } from '../utils/PathValidator';
+import { validateRepoPath, validateFilePath, validateBranchName } from '../utils/PathValidator';
 
 export class RepositoryService {
   private static isValidRepoUrl(url: string): boolean {
@@ -21,6 +21,11 @@ export class RepositoryService {
   static async clone(repoUrl: string, branch: string = 'main', accessToken?: string): Promise<Repository> {
     if (!this.isValidRepoUrl(repoUrl)) {
       throw new Error('Please enter a valid Git repository URL (e.g., https://github.com/username/repo)');
+    }
+
+    // Validate branch name to prevent command injection
+    if (!validateBranchName(branch)) {
+      throw new Error('Invalid branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
     }
 
     // Check if repository is already cloned
@@ -56,21 +61,20 @@ export class RepositoryService {
 
     console.log(`Cloning new repository: ${repoUrl} (${branch}) -> ${repoId}`);
 
-    // Use shallow clone for faster cloning
-    const { exec } = require('child_process');
-    const cloneCommand = `git clone --depth 1 ${branch !== 'main' ? `--branch ${branch} --single-branch` : ''} "${authRepoUrl}" "${repoPath}"`;
+    // Use simple-git instead of exec() to prevent command injection
+    // simple-git properly escapes arguments, making it safe from injection attacks
+    const cloneOptions: string[] = ['--depth', '1'];
+    if (branch !== 'main') {
+      cloneOptions.push('--branch', branch, '--single-branch');
+    }
 
-    await new Promise((resolve, reject) => {
-      exec(cloneCommand, (error: any, stdout: any, stderr: any) => {
-        if (error) {
-          // Use structured error parser instead of string matching
-          const parsedError = GitErrorParser.parseExecError(error, stderr, stdout, branch);
-          reject(new Error(parsedError.message));
-        } else {
-          resolve(stdout);
-        }
-      });
-    });
+    try {
+      await git.clone(authRepoUrl, repoPath, cloneOptions);
+    } catch (error: any) {
+      // Use structured error parser for simple-git errors
+      const parsedError = GitErrorParser.parseSimpleGitError(error, branch);
+      throw new Error(parsedError.message);
+    }
 
     // Store the mapping
     RepositoryMappingService.setRepoId(repoUrl, branch, repoId);
@@ -102,6 +106,11 @@ export class RepositoryService {
 
     if (!repoUrl) {
       throw new Error('Repository URL is required for sync');
+    }
+
+    // Validate branch name to prevent command injection
+    if (!validateBranchName(branch)) {
+      throw new Error('Invalid branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
     }
 
     const git: SimpleGit = simpleGit(repoPath);
@@ -220,6 +229,11 @@ export class RepositoryService {
       throw new Error('Repository not found');
     }
 
+    // Validate branch names to prevent command injection
+    if (!validateBranchName(targetBranch)) {
+      throw new Error('Invalid target branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
+    }
+
     const git: SimpleGit = simpleGit(repoPath);
 
     try {
@@ -230,6 +244,11 @@ export class RepositoryService {
       if (!currentBranch) {
         const branchSummary = await git.branchLocal();
         currentBranch = branchSummary.current || 'main';
+      }
+
+      // Validate current branch name if provided
+      if (currentBranch && !validateBranchName(currentBranch)) {
+        throw new Error('Invalid current branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
       }
 
       // Get changed files: files that differ between targetBranch and currentBranch

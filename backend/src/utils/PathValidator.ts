@@ -83,3 +83,50 @@ export function validateRepoPath(repoId: string, reposDir: string): string | nul
 
   return repoPath;
 }
+
+/**
+ * Validates a Git branch name to prevent command injection attacks
+ * Git branch names can contain alphanumeric, hyphens, underscores, forward slashes, and dots
+ * but must not contain shell metacharacters or control sequences
+ * 
+ * @param branch - The branch name to validate
+ * @returns true if the branch name is safe, false otherwise
+ */
+export function validateBranchName(branch: string): boolean {
+  if (!branch || typeof branch !== 'string') {
+    return false;
+  }
+
+  // Git branch name rules:
+  // - Can contain: alphanumeric, hyphens, underscores, forward slashes, dots
+  // - Cannot start or end with a dot
+  // - Cannot contain consecutive dots (..)
+  // - Cannot contain spaces, shell metacharacters, or control characters
+  // - Cannot be empty or only whitespace
+  const trimmed = branch.trim();
+  
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  // Reject if starts or ends with dot
+  if (trimmed.startsWith('.') || trimmed.endsWith('.')) {
+    return false;
+  }
+
+  // Reject if contains consecutive dots (path traversal attempt)
+  if (trimmed.includes('..')) {
+    return false;
+  }
+
+  // Reject if contains shell metacharacters or control sequences
+  // This prevents command injection: ; | & $ ` ( ) { } [ ] < > * ? ~ \ " ' space tab newline
+  const dangerousChars = /[;|&$`(){}[\]<>*?~\\"' \t\n\r]|@{|\\\\/;
+  if (dangerousChars.test(trimmed)) {
+    return false;
+  }
+
+  // Only allow safe characters: alphanumeric, hyphens, underscores, forward slashes, dots
+  const safeBranchPattern = /^[a-zA-Z0-9._\/-]+$/;
+  return safeBranchPattern.test(trimmed);
+}
