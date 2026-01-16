@@ -22,4 +22,12 @@ export class RepositoryService extends ApiClient {
   async deleteRepo(repoId: string): Promise<{ success: boolean }> {
     return this.delete(`/api/repo/${repoId}`);
   }
+
+  async getChangedFiles(repoId: string, targetBranch: string, currentBranch?: string): Promise<{ files: FileInfo[] }> {
+    const params = new URLSearchParams({ targetBranch });
+    if (currentBranch) {
+      params.append('currentBranch', currentBranch);
+    }
+    return this.get<{ files: FileInfo[] }>(`/api/repo/changed-files/${repoId}?${params.toString()}`);
+  }
 }

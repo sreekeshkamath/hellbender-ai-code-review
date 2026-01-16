@@ -58,4 +58,26 @@ export class RepositoryController {
       res.status(500).json({ error: (error as Error).message });
     }
   }
+
+  static async getChangedFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const { repoId } = req.params;
+      const { targetBranch, currentBranch } = req.query;
+      
+      if (!targetBranch || typeof targetBranch !== 'string') {
+        res.status(400).json({ error: 'targetBranch query parameter is required' });
+        return;
+      }
+
+      const files = await RepositoryService.getChangedFiles(
+        repoId,
+        targetBranch,
+        typeof currentBranch === 'string' ? currentBranch : undefined
+      );
+      res.json({ files });
+    } catch (error) {
+      console.error('Changed files error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
 }

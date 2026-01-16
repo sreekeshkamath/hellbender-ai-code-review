@@ -179,4 +179,53 @@ export class RepositoryService {
   static syncWithDefaults(repoId: string, repoUrl: string, branch?: string): Promise<Repository> {
     return this.sync(repoId, repoUrl, branch, GITHUB_ACCESS_TOKEN);
   }
+
+  static async getChangedFiles(repoId: string, targetBranch: string, currentBranch?: string): Promise<FileInfo[]> {
+    const repoPath = path.join(REPOS_DIR, repoId);
+
+    if (!fs.existsSync(repoPath)) {
+      throw new Error('Repository not found');
+    }
+
+    const git: SimpleGit = simpleGit(repoPath);
+
+    try {
+      // Fetch all branches to ensure we have both branches
+      await git.fetch(['--all']);
+
+      // Get the current branch if not specified
+      if (!currentBranch) {
+        const branchSummary = await git.branchLocal();
+        currentBranch = branchSummary.current || 'main';
+      }
+
+      // Get changed files: files that differ between targetBranch and currentBranch
+      // This shows what has changed in currentBranch compared to targetBranch
+      const diffSummary = await git.diffSummary([`origin/${targetBranch}`, `origin/${currentBranch}`]);
+
+      // Filter only modified and added files (exclude deleted)
+      const changedFiles: FileInfo[] = [];
+
+      for (const file of diffSummary.files) {
+        if (file.binary) continue; // Skip binary files
+        // Skip files that were only deleted (no insertions, only deletions)
+        if (file.insertions === 0 && file.deletions > 0) continue;
+
+        // Check if file exists in current branch (it should since we're on it)
+        const filePath = path.join(repoPath, file.file);
+        if (fs.existsSync(filePath)) {
+          const stats = fs.statSync(filePath);
+          changedFiles.push({
+            path: file.file,
+            size: stats.size
+          });
+        }
+      }
+
+      return changedFiles;
+    } catch (error: any) {
+      const parsedError = GitErrorParser.parseSimpleGitError(error, targetBranch);
+      throw new Error(parsedError.message);
+    }
+  }
 }

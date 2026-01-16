@@ -71,12 +71,30 @@ export function ModelsProvider({ children }: { children: React.ReactNode }) {
 
   const filteredModels = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
-    const baseList = normalizedSearch
+    
+    // Check if the search term looks like a specific model ID (e.g. "provider/model")
+    // and if it's not already in the fetched models list
+    const isModelIdPattern = normalizedSearch.includes('/') && normalizedSearch.length > 3;
+    const exactModelMatch = models.find(m => m.id.toLowerCase() === normalizedSearch);
+    
+    let baseList = normalizedSearch
       ? models.filter(model =>
           model.name.toLowerCase().includes(normalizedSearch) ||
-          model.provider.toLowerCase().includes(normalizedSearch)
+          model.provider.toLowerCase().includes(normalizedSearch) ||
+          model.id.toLowerCase().includes(normalizedSearch)
         )
       : models;
+
+    // If it's a model ID pattern and not in our list, add it as a virtual option
+    if (isModelIdPattern && !exactModelMatch) {
+      const [provider] = searchTerm.split('/');
+      const virtualModel: Model = {
+        id: searchTerm.trim(),
+        name: searchTerm.trim(),
+        provider: provider.charAt(0).toUpperCase() + provider.slice(1)
+      };
+      baseList = [virtualModel, ...baseList];
+    }
 
     const ordered = orderWithFreeFirst(baseList, freeModelId);
 

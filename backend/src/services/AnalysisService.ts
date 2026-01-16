@@ -1,6 +1,48 @@
 const OpenAI = require('openai');
 
+import * as https from 'https';
+
 export class AnalysisService {
+  static async getOpenRouterModels(): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'openrouter.ai',
+        path: '/api/v1/models',
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'X-Title': 'AI Code Reviewer'
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const response = JSON.parse(data);
+            if (response.data) {
+              // Map OpenRouter models to our frontend Model type
+              const models = response.data.map((m: any) => ({
+                id: m.id,
+                name: m.name || m.id,
+                provider: m.id.split('/')[0] || 'Unknown'
+              }));
+              resolve(models);
+            } else {
+              resolve([]);
+            }
+          } catch (e) {
+            reject(new Error('Failed to parse OpenRouter models response'));
+          }
+        });
+      });
+
+      req.on('error', (e) => reject(e));
+      req.end();
+    });
+  }
+
   static async analyzeCode(content: string, filePath: string, model: string): Promise<any> {
     if (!process.env.OPENROUTER_API_KEY) {
       throw new Error('OPENROUTER_API_KEY environment variable is required');
@@ -91,7 +133,16 @@ Return ONLY valid JSON, no markdown formatting.`;
       let analysis;
       
       try {
-        analysis = JSON.parse(responseText);
+        // More robust JSON extraction: find the first '{' and last '}'
+        let cleanResponse = responseText.trim();
+        const firstBrace = cleanResponse.indexOf('{');
+        const lastBrace = cleanResponse.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          cleanResponse = cleanResponse.substring(firstBrace, lastBrace + 1);
+        }
+        
+        analysis = JSON.parse(cleanResponse);
       } catch (parseError) {
         console.error('Failed to parse JSON response:', responseText);
         throw new Error('Invalid JSON response from AI model');

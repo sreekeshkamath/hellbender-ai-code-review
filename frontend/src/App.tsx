@@ -1,55 +1,24 @@
 import React, { useState, useCallback } from 'react';
 import {
-  Search,
   Settings,
   Play,
-  History,
-  FileCode,
   Terminal,
-  Eraser,
   RefreshCw,
-  FolderOpen,
-  ArrowRight,
   Code,
   Bug,
-  ChevronRight,
-  GitBranch,
-  Cpu
+  GitBranch
 } from 'lucide-react';
 import { ActivityLog } from './components/ActivityLog';
-import { SavedReposList } from './components/SavedReposList';
-import { RepositoryConfig } from './components/RepositoryConfig';
-import { ModelSelector } from './components/ModelSelector';
-import { FileSelector } from './components/FileSelector';
+import { RepositoryView } from './components/RepositoryView';
 import { AnalysisResults } from './components/AnalysisResults';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { useActivityLog } from './hooks/useActivityLog';
 import { useModels } from './hooks/useModels';
 import { useRepository } from './hooks/useRepository';
 import { useAnalysis } from './hooks/useAnalysis';
-import { SavedRepository } from './types/api.types';
-
-// --- UI COMPONENTS ---
-
-const NavigationItem: React.FC<{ icon: any; label: string; isActive?: boolean; onSelect: () => void }> = ({
-  icon: Icon, label, isActive, onSelect
-}) => (
-  <button
-    onClick={onSelect}
-    className={`w-full flex flex-col items-center justify-center py-4 space-y-1 transition-all duration-200 border-l-2 ${
-      isActive
-        ? 'bg-zinc-900 border-white text-white'
-        : 'border-transparent text-zinc-600 hover:text-zinc-300 hover:bg-zinc-900/50'
-    }`}
-  >
-    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-    <span className="text-[8px] font-black uppercase tracking-[0.1em]">{label}</span>
-  </button>
-);
 
 function App() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [activeSection, setActiveSection] = useState<'repo' | 'model' | 'files' | 'saved'>('repo');
   const [consoleHeight, setConsoleHeight] = useState(192); // Default h-48 is 192px
   const [isResizing, setIsResizing] = useState(false);
 
@@ -57,11 +26,6 @@ function App() {
   const { selectedModel, setSelectedModel } = useModels();
   const { repoId, files } = useRepository();
   const { analyze, isAnalyzing } = useAnalysis();
-
-  const handleLoadRepo = (repo: SavedRepository) => {
-    // Load repo logic - this would integrate with repository hooks
-    addLog('info', `Loading repository: ${repo.name}`);
-  };
 
   const startResizing = useCallback((e: React.MouseEvent) => {
     setIsResizing(true);
@@ -122,63 +86,32 @@ function App() {
     }
   };
 
-  const renderActiveSection = () => {
-    switch (activeSection) {
-      case 'repo':
-        return <RepositoryConfig />;
-      case 'model':
-        return (
-          <ModelSelector
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-          />
-        );
-      case 'files':
-        return (
-          <FileSelector
-            selectedFiles={selectedFiles}
-            onSelectionChange={setSelectedFiles}
-          />
-        );
-      case 'saved':
-        return <SavedReposList onLoad={handleLoadRepo} />;
-      default:
-        return <RepositoryConfig />;
-    }
-  };
 
   return (
     <div className="flex h-screen w-full bg-black text-white selection:bg-white selection:text-black font-sans">
 
-      {/* GLOBAL NAVIGATION (SLIM) */}
-      <nav className="w-16 border-r border-zinc-800 flex flex-col items-center py-6 space-y-8">
-        <div className="w-8 h-8 bg-white text-black flex items-center justify-center font-black italic text-lg select-none">H</div>
-        <div className="flex-1 flex flex-col items-center space-y-6">
-          <NavigationItem icon={GitBranch} label="REPO" isActive={activeSection === 'repo'} onSelect={() => setActiveSection('repo')} />
-          <NavigationItem icon={Cpu} label="MODEL" isActive={activeSection === 'model'} onSelect={() => setActiveSection('model')} />
-          <NavigationItem icon={FileCode} label="FILES" isActive={activeSection === 'files'} onSelect={() => setActiveSection('files')} />
-          <NavigationItem icon={History} label="SAVED" isActive={activeSection === 'saved'} onSelect={() => setActiveSection('saved')} />
-        </div>
-        <button className="text-zinc-600 hover:text-white transition-colors"><Settings size={18} /></button>
-      </nav>
-
       {/* EXPLORER & CONFIG PANEL */}
-      <aside className="w-80 border-r border-zinc-800 flex flex-col bg-zinc-950/20">
+      <aside className="w-80 border-r border-zinc-800 flex flex-col bg-zinc-950/20 h-screen overflow-y-auto no-scrollbar">
         <div className="p-6">
-          <h2 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-6">
-            {activeSection === 'repo' && 'Repository Configuration'}
-            {activeSection === 'model' && 'AI Model Selection'}
-            {activeSection === 'files' && 'File Selection'}
-            {activeSection === 'saved' && 'Saved Repositories'}
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em]">
+              Repository Configuration
+            </h2>
+            <button className="text-zinc-600 hover:text-white transition-colors"><Settings size={14} /></button>
+          </div>
           <div className="space-y-4">
-            {renderActiveSection()}
+            <RepositoryView
+              selectedFiles={selectedFiles}
+              onSelectionChange={setSelectedFiles}
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+            />
           </div>
         </div>
 
         <div className="flex-1"></div>
 
-        <div className="p-6 border-t border-zinc-900 bg-zinc-950/20">
+        <div className="p-6 border-t border-zinc-900 bg-zinc-950/20 shrink-0">
            <h2 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-4">System Status</h2>
            <div className="space-y-2">
              <div className="border border-zinc-900 bg-zinc-900/30 p-3 flex items-center space-x-3 group cursor-pointer hover:border-zinc-700 transition-colors">
@@ -209,11 +142,12 @@ function App() {
       </aside>
 
       {/* MAIN WORKSPACE */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
 
         {/* TOP TOOLBAR */}
         <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-6 bg-black">
           <div className="flex items-center space-x-4">
+             <div className="w-8 h-8 bg-white text-black flex items-center justify-center font-black italic text-lg select-none">H</div>
              <h1 className="font-black text-xl tracking-tighter uppercase italic select-none">Hellbender</h1>
              <div className="h-4 w-px bg-zinc-800"></div>
              <span className="text-[10px] font-mono text-zinc-600 uppercase truncate max-w-xs">
@@ -244,12 +178,6 @@ function App() {
               <div className="w-full h-full bg-black p-8 overflow-y-auto no-scrollbar">
                 <AnalysisResults />
               </div>
-              {isAnalyzing && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center z-10">
-                   <div className="w-10 h-10 border-2 border-white border-t-transparent animate-spin mb-4"></div>
-                   <p className="text-[10px] font-black uppercase tracking-[0.4em]">Running Neural Audit</p>
-                </div>
-              )}
             </div>
             <div 
               style={{ height: `${consoleHeight}px` }} 

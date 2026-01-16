@@ -1,12 +1,13 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { RepositoryState } from '../types/models.types';
-import { Repository } from '../types/api.types';
+import { Repository, FileInfo } from '../types/api.types';
 import { RepositoryService } from '../services/RepositoryService';
 
 interface RepositoryContextValue extends RepositoryState {
   clone: (repoUrl: string, branch?: string) => Promise<Repository>;
   sync: (repoUrl: string, branch?: string) => Promise<Repository>;
   getFiles: () => Promise<Repository['files']>;
+  getChangedFiles: (targetBranch: string, currentBranch?: string) => Promise<FileInfo[]>;
   clear: () => void;
 }
 
@@ -84,6 +85,22 @@ export function RepositoryProvider({ children }: { children: React.ReactNode }) 
     }
   }, [state.repoId]);
 
+  const getChangedFiles = useCallback(async (targetBranch: string, currentBranch?: string) => {
+    if (!state.repoId) throw new Error('No repository loaded');
+    try {
+      const repositoryService = new RepositoryService();
+      const result = await repositoryService.getChangedFiles(state.repoId, targetBranch, currentBranch);
+      setState(prev => ({ ...prev, files: result.files }));
+      return result.files;
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: (error as Error).message,
+      }));
+      throw error;
+    }
+  }, [state.repoId]);
+
   const clear = useCallback(() => {
     setState({
       repoId: null,
@@ -99,8 +116,9 @@ export function RepositoryProvider({ children }: { children: React.ReactNode }) 
     clone,
     sync,
     getFiles,
+    getChangedFiles,
     clear,
-  }), [state, clone, sync, getFiles, clear]);
+  }), [state, clone, sync, getFiles, getChangedFiles, clear]);
 
   return React.createElement(RepositoryContext.Provider, { value }, children);
 }

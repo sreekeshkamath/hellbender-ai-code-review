@@ -6,18 +6,15 @@ import { AnalysisResult, AnalysisSummary } from '../models/AnalysisResult';
 import { REPOS_DIR } from '../config/constants';
 import { FileInfo } from '../models/FileInfo';
 
-const MODELS = [
-  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', provider: 'Anthropic' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
-  { id: 'google/gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'Google' },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek' },
-];
-
 export class ReviewController {
-  static getModels(req: Request, res: Response): void {
-    res.json(MODELS);
+  static async getModels(req: Request, res: Response): Promise<void> {
+    try {
+      const models = await AnalysisService.getOpenRouterModels();
+      res.json(models);
+    } catch (error) {
+      console.error('Failed to fetch OpenRouter models:', error);
+      res.status(500).json({ error: 'Failed to fetch available models' });
+    }
   }
 
   static async analyze(req: Request, res: Response): Promise<void> {
