@@ -5,6 +5,7 @@ import { AnalysisService } from '../services/AnalysisService';
 import { AnalysisResult, AnalysisSummary } from '../models/AnalysisResult';
 import { REPOS_DIR } from '../config/constants';
 import { FileInfo } from '../models/FileInfo';
+import { validateRepoPath, validateFilePath } from '../utils/PathValidator';
 
 export class ReviewController {
   static async getModels(req: Request, res: Response): Promise<void> {
@@ -28,7 +29,12 @@ export class ReviewController {
 
       console.log(`Starting analysis: ${files.length} files, model: ${model}`);
 
-      const repoPath = path.join(REPOS_DIR, repoId);
+      // Validate repoId to prevent path traversal
+      const repoPath = validateRepoPath(repoId, REPOS_DIR);
+      if (!repoPath) {
+        res.status(400).json({ error: 'Invalid repository ID' });
+        return;
+      }
 
       if (!fs.existsSync(repoPath)) {
         res.status(400).json({ error: 'Repository not found' });
@@ -41,7 +47,17 @@ export class ReviewController {
 
       // Helper function to analyze a single file
       const analyzeFile = async (file: FileInfo, index: number): Promise<AnalysisResult> => {
-        const filePath = path.join(repoPath, file.path);
+        // Validate file path to prevent path traversal
+        const validatedPath = validateFilePath(file.path, repoPath);
+        if (!validatedPath) {
+          console.warn(`Invalid file path detected: ${file.path}`);
+          return {
+            file: file.path,
+            error: 'Invalid file path'
+          };
+        }
+
+        const filePath = path.join(repoPath, validatedPath);
 
         if (!fs.existsSync(filePath)) {
           console.warn(`File not found: ${file.path}`);

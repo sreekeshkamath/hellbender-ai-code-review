@@ -45,6 +45,7 @@ const FileService_1 = require("./FileService");
 const RepositoryMappingService_1 = require("./RepositoryMappingService");
 const constants_1 = require("../config/constants");
 const GitErrorParser_1 = require("../utils/GitErrorParser");
+const PathValidator_1 = require("../utils/PathValidator");
 class RepositoryService {
     static isValidRepoUrl(url) {
         if (!url || typeof url !== 'string')
@@ -113,7 +114,11 @@ class RepositoryService {
         };
     }
     static async sync(repoId, repoUrl, branch = 'main', accessToken) {
-        const repoPath = path.join(constants_1.REPOS_DIR, repoId);
+        // Validate repoId to prevent path traversal
+        const repoPath = (0, PathValidator_1.validateRepoPath)(repoId, constants_1.REPOS_DIR);
+        if (!repoPath) {
+            throw new Error('Invalid repository ID');
+        }
         if (!fs.existsSync(repoPath)) {
             throw new Error('Repository not found');
         }
@@ -147,7 +152,11 @@ class RepositoryService {
         };
     }
     static getFiles(repoId) {
-        const repoPath = path.join(constants_1.REPOS_DIR, repoId);
+        // Validate repoId to prevent path traversal
+        const repoPath = (0, PathValidator_1.validateRepoPath)(repoId, constants_1.REPOS_DIR);
+        if (!repoPath) {
+            throw new Error('Invalid repository ID');
+        }
         if (!fs.existsSync(repoPath)) {
             throw new Error('Repository not found');
         }
@@ -158,15 +167,29 @@ class RepositoryService {
         }));
     }
     static getFile(repoId, filePath) {
-        const repoPath = path.join(constants_1.REPOS_DIR, repoId);
-        const fullPath = path.join(repoPath, filePath);
+        // Validate repoId to prevent path traversal
+        const repoPath = (0, PathValidator_1.validateRepoPath)(repoId, constants_1.REPOS_DIR);
+        if (!repoPath) {
+            throw new Error('Invalid repository ID');
+        }
+        // Validate file path to prevent path traversal
+        const validatedFilePath = (0, PathValidator_1.validateFilePath)(filePath, repoPath);
+        if (!validatedFilePath) {
+            throw new Error('Invalid file path');
+        }
+        const fullPath = path.join(repoPath, validatedFilePath);
         if (!fs.existsSync(fullPath)) {
             throw new Error('File not found');
         }
         return fs.readFileSync(fullPath, 'utf-8');
     }
     static delete(repoId) {
-        const repoPath = path.join(constants_1.REPOS_DIR, repoId);
+        // Validate repoId to prevent path traversal attacks
+        // This is critical as we use fs.rmSync with recursive: true
+        const repoPath = (0, PathValidator_1.validateRepoPath)(repoId, constants_1.REPOS_DIR);
+        if (!repoPath) {
+            throw new Error('Invalid repository ID');
+        }
         // Remove from mappings
         const mappings = RepositoryMappingService_1.RepositoryMappingService.getAllMappings();
         for (const [key, mappedRepoId] of Object.entries(mappings)) {
@@ -192,7 +215,11 @@ class RepositoryService {
         return this.sync(repoId, repoUrl, branch, constants_1.GITHUB_ACCESS_TOKEN);
     }
     static async getChangedFiles(repoId, targetBranch, currentBranch) {
-        const repoPath = path.join(constants_1.REPOS_DIR, repoId);
+        // Validate repoId to prevent path traversal
+        const repoPath = (0, PathValidator_1.validateRepoPath)(repoId, constants_1.REPOS_DIR);
+        if (!repoPath) {
+            throw new Error('Invalid repository ID');
+        }
         if (!fs.existsSync(repoPath)) {
             throw new Error('Repository not found');
         }

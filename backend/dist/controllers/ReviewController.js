@@ -38,6 +38,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const AnalysisService_1 = require("../services/AnalysisService");
 const constants_1 = require("../config/constants");
+const PathValidator_1 = require("../utils/PathValidator");
 class ReviewController {
     static async getModels(req, res) {
         try {
@@ -57,7 +58,12 @@ class ReviewController {
                 return;
             }
             console.log(`Starting analysis: ${files.length} files, model: ${model}`);
-            const repoPath = path.join(constants_1.REPOS_DIR, repoId);
+            // Validate repoId to prevent path traversal
+            const repoPath = (0, PathValidator_1.validateRepoPath)(repoId, constants_1.REPOS_DIR);
+            if (!repoPath) {
+                res.status(400).json({ error: 'Invalid repository ID' });
+                return;
+            }
             if (!fs.existsSync(repoPath)) {
                 res.status(400).json({ error: 'Repository not found' });
                 return;
@@ -67,7 +73,16 @@ class ReviewController {
             const results = [];
             // Helper function to analyze a single file
             const analyzeFile = async (file, index) => {
-                const filePath = path.join(repoPath, file.path);
+                // Validate file path to prevent path traversal
+                const validatedPath = (0, PathValidator_1.validateFilePath)(file.path, repoPath);
+                if (!validatedPath) {
+                    console.warn(`Invalid file path detected: ${file.path}`);
+                    return {
+                        file: file.path,
+                        error: 'Invalid file path'
+                    };
+                }
+                const filePath = path.join(repoPath, validatedPath);
                 if (!fs.existsSync(filePath)) {
                     console.warn(`File not found: ${file.path}`);
                     return {
