@@ -63,10 +63,9 @@ export class RepositoryService {
 
     // Use simple-git instead of exec() to prevent command injection
     // simple-git properly escapes arguments, making it safe from injection attacks
-    const cloneOptions: string[] = ['--depth', '1'];
-    if (branch !== 'main') {
-      cloneOptions.push('--branch', branch, '--single-branch');
-    }
+    // Always specify the branch explicitly to ensure we clone the requested branch,
+    // even if it's 'main' (the repo's default branch might be 'master' or something else)
+    const cloneOptions: string[] = ['--depth', '1', '--branch', branch, '--single-branch'];
 
     try {
       await git.clone(authRepoUrl, repoPath, cloneOptions);

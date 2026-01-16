@@ -58,6 +58,10 @@ class RepositoryService {
         if (!this.isValidRepoUrl(repoUrl)) {
             throw new Error('Please enter a valid Git repository URL (e.g., https://github.com/username/repo)');
         }
+        // Validate branch name to prevent command injection
+        if (!(0, PathValidator_1.validateBranchName)(branch)) {
+            throw new Error('Invalid branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
+        }
         // Check if repository is already cloned
         let repoId = RepositoryMappingService_1.RepositoryMappingService.getRepoId(repoUrl, branch);
         if (repoId && RepositoryMappingService_1.RepositoryMappingService.repoExists(repoId, constants_1.REPOS_DIR)) {
@@ -84,21 +88,19 @@ class RepositoryService {
             ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
             : repoUrl;
         console.log(`Cloning new repository: ${repoUrl} (${branch}) -> ${repoId}`);
-        // Use shallow clone for faster cloning
-        const { exec } = require('child_process');
-        const cloneCommand = `git clone --depth 1 ${branch !== 'main' ? `--branch ${branch} --single-branch` : ''} "${authRepoUrl}" "${repoPath}"`;
-        await new Promise((resolve, reject) => {
-            exec(cloneCommand, (error, stdout, stderr) => {
-                if (error) {
-                    // Use structured error parser instead of string matching
-                    const parsedError = GitErrorParser_1.GitErrorParser.parseExecError(error, stderr, stdout, branch);
-                    reject(new Error(parsedError.message));
-                }
-                else {
-                    resolve(stdout);
-                }
-            });
-        });
+        // Use simple-git instead of exec() to prevent command injection
+        // simple-git properly escapes arguments, making it safe from injection attacks
+        // Always specify the branch explicitly to ensure we clone the requested branch,
+        // even if it's 'main' (the repo's default branch might be 'master' or something else)
+        const cloneOptions = ['--depth', '1', '--branch', branch, '--single-branch'];
+        try {
+            await git.clone(authRepoUrl, repoPath, cloneOptions);
+        }
+        catch (error) {
+            // Use structured error parser for simple-git errors
+            const parsedError = GitErrorParser_1.GitErrorParser.parseSimpleGitError(error, branch);
+            throw new Error(parsedError.message);
+        }
         // Store the mapping
         RepositoryMappingService_1.RepositoryMappingService.setRepoId(repoUrl, branch, repoId);
         const filePaths = FileService_1.FileService.getAllFiles(repoPath);
@@ -124,6 +126,10 @@ class RepositoryService {
         }
         if (!repoUrl) {
             throw new Error('Repository URL is required for sync');
+        }
+        // Validate branch name to prevent command injection
+        if (!(0, PathValidator_1.validateBranchName)(branch)) {
+            throw new Error('Invalid branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
         }
         const git = (0, simple_git_1.default)(repoPath);
         const authRepoUrl = accessToken
@@ -223,6 +229,10 @@ class RepositoryService {
         if (!fs.existsSync(repoPath)) {
             throw new Error('Repository not found');
         }
+        // Validate branch names to prevent command injection
+        if (!(0, PathValidator_1.validateBranchName)(targetBranch)) {
+            throw new Error('Invalid target branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
+        }
         const git = (0, simple_git_1.default)(repoPath);
         try {
             // Fetch all branches to ensure we have both branches
@@ -231,6 +241,10 @@ class RepositoryService {
             if (!currentBranch) {
                 const branchSummary = await git.branchLocal();
                 currentBranch = branchSummary.current || 'main';
+            }
+            // Validate current branch name if provided
+            if (currentBranch && !(0, PathValidator_1.validateBranchName)(currentBranch)) {
+                throw new Error('Invalid current branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
             }
             // Get changed files: files that differ between targetBranch and currentBranch
             // This shows what has changed in currentBranch compared to targetBranch
