@@ -161,8 +161,12 @@ export class RepositoryService {
     const mappings = RepositoryMappingService.getAllMappings();
     for (const [key, mappedRepoId] of Object.entries(mappings)) {
       if (mappedRepoId === repoId) {
-        const [repoUrl, branch] = key.split(':');
-        RepositoryMappingService.removeMapping(repoUrl, branch);
+        const parsed = RepositoryMappingService.parseKey(key);
+        if (parsed) {
+          RepositoryMappingService.removeMapping(parsed.repoUrl, parsed.branch);
+        } else {
+          console.warn(`Invalid mapping key format: ${key}`);
+        }
         break;
       }
     }

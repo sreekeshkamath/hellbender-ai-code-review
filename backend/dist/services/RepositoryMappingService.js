@@ -45,6 +45,20 @@ class RepositoryMappingService {
         const normalizedUrl = repoUrl.toLowerCase().trim().replace(/\.git$/, '');
         return `${normalizedUrl}:${branch}`;
     }
+    /**
+     * Parses a mapping key back into repoUrl and branch.
+     * Handles URLs with colons (e.g., https://, git@host:path) by splitting on the last colon.
+     */
+    static parseKey(key) {
+        const lastColonIndex = key.lastIndexOf(':');
+        if (lastColonIndex === -1) {
+            return null;
+        }
+        return {
+            repoUrl: key.substring(0, lastColonIndex),
+            branch: key.substring(lastColonIndex + 1)
+        };
+    }
     static loadMappings() {
         try {
             if (!fs.existsSync(constants_1.MAPPINGS_FILE)) {
