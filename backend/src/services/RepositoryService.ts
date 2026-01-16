@@ -7,6 +7,7 @@ import { FileInfo } from '../models/FileInfo';
 import { FileService } from './FileService';
 import { RepositoryMappingService } from './RepositoryMappingService';
 import { REPOS_DIR, GITHUB_ACCESS_TOKEN } from '../config/constants';
+import { GitErrorParser } from '../utils/GitErrorParser';
 
 export class RepositoryService {
   private static isValidRepoUrl(url: string): boolean {
@@ -52,10 +53,23 @@ export class RepositoryService {
       ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
       : repoUrl;
 
-    const cloneOptions = branch !== 'main' ? ['--branch', branch, '--single-branch'] : [];
-
     console.log(`Cloning new repository: ${repoUrl} (${branch}) -> ${repoId}`);
-    await git.clone(authRepoUrl, repoPath, cloneOptions);
+
+    // Use shallow clone for faster cloning
+    const { exec } = require('child_process');
+    const cloneCommand = `git clone --depth 1 ${branch !== 'main' ? `--branch ${branch} --single-branch` : ''} "${authRepoUrl}" "${repoPath}"`;
+
+    await new Promise((resolve, reject) => {
+      exec(cloneCommand, (error: any, stdout: any, stderr: any) => {
+        if (error) {
+          // Use structured error parser instead of string matching
+          const parsedError = GitErrorParser.parseExecError(error, stderr, stdout, branch);
+          reject(new Error(parsedError.message));
+        } else {
+          resolve(stdout);
+        }
+      });
+    });
 
     // Store the mapping
     RepositoryMappingService.setRepoId(repoUrl, branch, repoId);
@@ -90,8 +104,16 @@ export class RepositoryService {
       ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
       : repoUrl;
 
-    await git.fetch('origin', branch);
-    await git.reset(['--hard', `origin/${branch}`]);
+    try {
+      await git.fetch('origin', branch);
+      await git.reset(['--hard', `origin/${branch}`]);
+    } catch (error: any) {
+      // Use structured error parser for simple-git errors
+      const parsedError = GitErrorParser.parseSimpleGitError(error, branch);
+      
+      // Throw with the parsed error message (already user-friendly)
+      throw new Error(parsedError.message);
+    }
 
     const filePaths = FileService.getAllFiles(repoPath);
     const files: FileInfo[] = filePaths.map(f => ({

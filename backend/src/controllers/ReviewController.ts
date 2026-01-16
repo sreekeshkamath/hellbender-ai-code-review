@@ -4,6 +4,7 @@ import * as path from 'path';
 import { AnalysisService } from '../services/AnalysisService';
 import { AnalysisResult, AnalysisSummary } from '../models/AnalysisResult';
 import { REPOS_DIR } from '../config/constants';
+import { FileInfo } from '../models/FileInfo';
 
 const MODELS = [
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
@@ -21,12 +22,14 @@ export class ReviewController {
 
   static async analyze(req: Request, res: Response): Promise<void> {
     try {
-      const { repoId, model, files } = req.body;
+      const { repoId, model, files }: { repoId: string, model: string, files: FileInfo[] } = req.body;
 
       if (!repoId || !model || !files || files.length === 0) {
         res.status(400).json({ error: 'Missing required fields' });
         return;
       }
+
+      console.log(`Starting analysis: ${files.length} files, model: ${model}`);
 
       const repoPath = path.join(REPOS_DIR, repoId);
 
@@ -35,25 +38,64 @@ export class ReviewController {
         return;
       }
 
+      // Process files in parallel with concurrency limit to avoid rate limiting
+      const CONCURRENCY_LIMIT = 3; // Process 3 files at a time
       const results: AnalysisResult[] = [];
 
-      for (const file of files) {
+      // Helper function to analyze a single file
+      const analyzeFile = async (file: FileInfo, index: number): Promise<AnalysisResult> => {
         const filePath = path.join(repoPath, file.path);
 
         if (!fs.existsSync(filePath)) {
-          results.push({
+          console.warn(`File not found: ${file.path}`);
+          return {
             file: file.path,
             error: 'File not found'
-          });
-          continue;
+          };
         }
 
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const analysis = await AnalysisService.analyzeCode(content, file.path, model);
+        try {
+          const content = fs.readFileSync(filePath, 'utf-8');
+          console.log(`[${index + 1}/${files.length}] Analyzing: ${file.path} (${content.length} chars)`);
+          const analysis = await AnalysisService.analyzeCode(content, file.path, model);
+          console.log(`[${index + 1}/${files.length}] ✓ Complete: ${file.path}`);
 
-        results.push({
-          file: file.path,
-          ...analysis
+          return {
+            file: file.path,
+            ...analysis
+          };
+        } catch (fileError) {
+          console.error(`[${index + 1}/${files.length}] ✗ Error analyzing ${file.path}:`, fileError);
+          return {
+            file: file.path,
+            error: (fileError as Error).message
+          };
+        }
+      };
+
+      // Process files in batches with concurrency limit
+      for (let i = 0; i < files.length; i += CONCURRENCY_LIMIT) {
+        const batch = files.slice(i, i + CONCURRENCY_LIMIT);
+        const batchPromises = batch.map((file: FileInfo, batchIndex: number) => 
+          analyzeFile(file, i + batchIndex)
+        );
+
+        console.log(`Processing batch ${Math.floor(i / CONCURRENCY_LIMIT) + 1} (${batch.length} files in parallel)...`);
+        
+        // Use allSettled so one failure doesn't stop others
+        const batchResults = await Promise.allSettled(batchPromises);
+        
+        batchResults.forEach((result, batchIndex) => {
+          if (result.status === 'fulfilled') {
+            results.push(result.value);
+          } else {
+            const file = batch[batchIndex];
+            console.error(`Failed to process ${file.path}:`, result.reason);
+            results.push({
+              file: file.path,
+              error: result.reason?.message || 'Unknown error'
+            });
+          }
         });
       }
 

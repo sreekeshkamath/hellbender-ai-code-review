@@ -9,6 +9,7 @@ export class AnalysisService {
     const openai = new (OpenAI as any)({
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey: process.env.OPENROUTER_API_KEY,
+      timeout: 120000, // 2 minutes per file
       defaultHeaders: {
         'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3001',
         'X-Title': 'AI Code Reviewer'
@@ -50,6 +51,23 @@ Focus on:
 Return ONLY valid JSON, no markdown formatting.`;
 
     try {
+      const codePreview = content.length > 500 
+        ? content.substring(0, 500) + '...' 
+        : content;
+      const lineCount = content.split('\n').length;
+      
+      console.log(`[ANALYSIS] Sending code to AI agent:`);
+      console.log(`  File: ${filePath}`);
+      console.log(`  Model: ${model}`);
+      console.log(`  Size: ${content.length} chars, ${lineCount} lines`);
+      console.log(`  Code preview (first 500 chars):`);
+      console.log(`  ${'─'.repeat(60)}`);
+      console.log(codePreview.split('\n').slice(0, 10).map(line => `  ${line}`).join('\n'));
+      if (lineCount > 10) console.log(`  ... (${lineCount - 10} more lines)`);
+      console.log(`  ${'─'.repeat(60)}`);
+      
+      const startTime = Date.now();
+      
       const completion = await openai.chat.completions.create({
         model: model,
         messages: [
@@ -66,15 +84,38 @@ Return ONLY valid JSON, no markdown formatting.`;
         temperature: 0.3
       });
 
+      const elapsed = Date.now() - startTime;
+      console.log(`[ANALYSIS] AI agent response received in ${elapsed}ms for ${filePath}`);
+
       const responseText = completion.choices[0].message.content;
-      const analysis = JSON.parse(responseText);
+      let analysis;
+      
+      try {
+        analysis = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', responseText);
+        throw new Error('Invalid JSON response from AI model');
+      }
 
       return {
         ...analysis,
         vulnerabilities: [...vulnerabilities, ...(analysis.securityIssues || [])]
       };
     } catch (error) {
-      console.error('OpenRouter API error:', error);
+      const errorMessage = (error as Error).message;
+      console.error(`OpenRouter API error for ${filePath}:`, errorMessage);
+
+      // If it's a timeout, provide a more specific message
+      if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        return {
+          score: 70,
+          issues: [],
+          strengths: [],
+          summary: 'Analysis timed out. The AI model took too long to respond.',
+          vulnerabilities,
+          error: 'Request timeout - AI model response exceeded time limit'
+        };
+      }
 
       return {
         score: 70,
@@ -82,7 +123,7 @@ Return ONLY valid JSON, no markdown formatting.`;
         strengths: [],
         summary: 'Analysis completed with limited AI insights due to API error.',
         vulnerabilities,
-        error: (error as Error).message
+        error: errorMessage
       };
     }
   }

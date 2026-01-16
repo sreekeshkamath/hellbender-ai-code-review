@@ -81,7 +81,10 @@ class RepositoryService {
         const authRepoUrl = accessToken
             ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
             : repoUrl;
-        const cloneOptions = branch !== 'main' ? ['--branch', branch, '--single-branch'] : [];
+        const cloneOptions = ['--depth', '1'];
+        if (branch !== 'main') {
+            cloneOptions.push('--branch', branch, '--single-branch');
+        }
         console.log(`Cloning new repository: ${repoUrl} (${branch}) -> ${repoId}`);
         await git.clone(authRepoUrl, repoPath, cloneOptions);
         // Store the mapping
