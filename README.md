@@ -1,4 +1,4 @@
-# NOTE: 
+# NOTE:
 This application was entirely Vibe Coded! Use it at your own risk and preferably not in a sensitive or production codebase.
 
 # AI Code Reviewer
@@ -18,8 +18,8 @@ An AI-powered code review application that analyzes your codebase for issues, vu
 
 ## Storage
 
-- **Cloned Repositories**: Stored in `backend/temp/repos/{uuid}/` - not version controlled, auto-cleaned on clear
-- **Saved Repositories**: Encrypted storage in `backend/data/repos.json.enc` with AES-256 encryption
+- **Cloned Repositories**: Stored in `temp/repos/{uuid}/` - not version controlled, auto-cleaned on clear
+- **Saved Repositories**: Encrypted storage in `data/repos.json.enc` with AES-256 encryption
 
 ## Prerequisites
 
@@ -31,27 +31,20 @@ An AI-powered code review application that analyzes your codebase for issues, vu
 
 1. Clone the repository:
 ```bash
-cd ai-code-reviewer
+cd hellbender-ai-code-review
 ```
 
-2. Install backend dependencies:
+2. Install all dependencies:
 ```bash
-npm install
+npm run install:all
 ```
 
-3. Install frontend dependencies:
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-4. Configure environment variables:
+3. Configure environment variables:
 ```bash
 cp .env.example .env
 ```
 
-5. Edit `.env` and add your OpenRouter API key:
+4. Edit `.env` and add your OpenRouter API key:
 ```
 OPENROUTER_API_KEY=your_api_key_here
 ```
@@ -61,7 +54,7 @@ OPENROUTER_API_KEY=your_api_key_here
 ### Development Mode (both servers)
 
 ```bash
-npm run dev:all
+npm run dev
 ```
 
 This will start:
@@ -77,8 +70,14 @@ npm run dev
 
 Frontend only:
 ```bash
-cd frontend
-npm run dev
+npm run client
+```
+
+### Production Build
+
+```bash
+npm run build
+npm start
 ```
 
 ## Usage
@@ -117,6 +116,9 @@ The application automatically detects common security issues including:
 
 ## API Endpoints
 
+### GET /health
+Health check endpoint.
+
 ### POST /api/repo/clone
 Clone a repository for analysis.
 
@@ -152,6 +154,15 @@ Request body:
 }
 ```
 
+### GET /api/saved-repos
+Get all saved repositories.
+
+### POST /api/saved-repos
+Save a repository for quick access.
+
+### DELETE /api/saved-repos/:id
+Delete a saved repository.
+
 ## Environment Variables
 
 | Variable | Description | Default |
@@ -164,11 +175,20 @@ Request body:
 
 ## Architecture
 
-This application uses a monorepo structure with separate backend and frontend packages:
+This application uses a monorepo structure:
 
 ```
-ai-code-reviewer/
-├── backend/          # TypeScript Express server
+hellbender-ai-code-review/
+├── server.js              # Express server entry point (CommonJS)
+├── routes/                # Route handlers
+│   ├── repo.js           # Repository cloning/management
+│   ├── review.js         # Code review endpoints
+│   └── savedRepos.js     # Saved repositories management
+├── utils/                 # Utility functions
+│   ├── openrouter.js     # OpenRouter API client
+│   ├── repoMapping.js    # Repository ID mapping
+│   └── repoStore.js      # Encrypted repository storage
+├── backend/               # TypeScript backend (alternative implementation)
 │   ├── src/
 │   │   ├── controllers/  # Route handlers
 │   │   ├── services/     # Business logic classes
@@ -176,7 +196,7 @@ ai-code-reviewer/
 │   │   ├── routes/       # Express route definitions
 │   │   └── utils/        # Helper functions
 │   └── package.json
-├── frontend/         # TypeScript React application
+├── frontend/              # React TypeScript application
 │   ├── src/
 │   │   ├── components/   # React components
 │   │   ├── hooks/        # Custom React hooks
@@ -184,16 +204,29 @@ ai-code-reviewer/
 │   │   ├── types/        # TypeScript types
 │   │   └── utils/        # Helper functions
 │   └── package.json
-└── README.md
+├── data/                  # Data storage
+│   └── repo-mappings.json # Repository ID mappings
+├── temp/                  # Temporary cloned repositories
+└── package.json
 ```
 
 ## Tech Stack
 
-- **Backend**: Node.js, TypeScript, Express, simple-git
+- **Backend**: Node.js, Express, simple-git
 - **Frontend**: React, TypeScript, Vite, Axios, Tailwind CSS
 - **AI**: OpenRouter API (access to multiple models)
-- **Testing**: Jest, Supertest
+- **Testing**: Jest
 - **Styling**: Tailwind CSS, Radix UI components
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run install:all` | Install all dependencies (root, backend, frontend) |
+| `npm run dev` | Start both backend and frontend in development mode |
+| `npm run client` | Start only the frontend in development mode |
+| `npm run build` | Build the frontend for production |
+| `npm start` | Start the production server |
 
 ## License
 
