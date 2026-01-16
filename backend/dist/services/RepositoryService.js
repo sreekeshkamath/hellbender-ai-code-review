@@ -44,6 +44,7 @@ const uuid_1 = require("uuid");
 const FileService_1 = require("./FileService");
 const RepositoryMappingService_1 = require("./RepositoryMappingService");
 const constants_1 = require("../config/constants");
+const GitErrorParser_1 = require("../utils/GitErrorParser");
 class RepositoryService {
     static isValidRepoUrl(url) {
         if (!url || typeof url !== 'string')
@@ -81,12 +82,22 @@ class RepositoryService {
         const authRepoUrl = accessToken
             ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
             : repoUrl;
-        const cloneOptions = ['--depth', '1'];
-        if (branch !== 'main') {
-            cloneOptions.push('--branch', branch, '--single-branch');
-        }
         console.log(`Cloning new repository: ${repoUrl} (${branch}) -> ${repoId}`);
-        await git.clone(authRepoUrl, repoPath, cloneOptions);
+        // Use shallow clone for faster cloning
+        const { exec } = require('child_process');
+        const cloneCommand = `git clone --depth 1 ${branch !== 'main' ? `--branch ${branch} --single-branch` : ''} "${authRepoUrl}" "${repoPath}"`;
+        await new Promise((resolve, reject) => {
+            exec(cloneCommand, (error, stdout, stderr) => {
+                if (error) {
+                    // Use structured error parser instead of string matching
+                    const parsedError = GitErrorParser_1.GitErrorParser.parseExecError(error, stderr, stdout, branch);
+                    reject(new Error(parsedError.message));
+                }
+                else {
+                    resolve(stdout);
+                }
+            });
+        });
         // Store the mapping
         RepositoryMappingService_1.RepositoryMappingService.setRepoId(repoUrl, branch, repoId);
         const filePaths = FileService_1.FileService.getAllFiles(repoPath);
@@ -113,8 +124,16 @@ class RepositoryService {
         const authRepoUrl = accessToken
             ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
             : repoUrl;
-        await git.fetch('origin', branch);
-        await git.reset(['--hard', `origin/${branch}`]);
+        try {
+            await git.fetch('origin', branch);
+            await git.reset(['--hard', `origin/${branch}`]);
+        }
+        catch (error) {
+            // Use structured error parser for simple-git errors
+            const parsedError = GitErrorParser_1.GitErrorParser.parseSimpleGitError(error, branch);
+            // Throw with the parsed error message (already user-friendly)
+            throw new Error(parsedError.message);
+        }
         const filePaths = FileService_1.FileService.getAllFiles(repoPath);
         const files = filePaths.map(f => ({
             path: path.relative(repoPath, f),
@@ -171,6 +190,48 @@ class RepositoryService {
     }
     static syncWithDefaults(repoId, repoUrl, branch) {
         return this.sync(repoId, repoUrl, branch, constants_1.GITHUB_ACCESS_TOKEN);
+    }
+    static async getChangedFiles(repoId, targetBranch, currentBranch) {
+        const repoPath = path.join(constants_1.REPOS_DIR, repoId);
+        if (!fs.existsSync(repoPath)) {
+            throw new Error('Repository not found');
+        }
+        const git = (0, simple_git_1.default)(repoPath);
+        try {
+            // Fetch all branches to ensure we have both branches
+            await git.fetch(['--all']);
+            // Get the current branch if not specified
+            if (!currentBranch) {
+                const branchSummary = await git.branchLocal();
+                currentBranch = branchSummary.current || 'main';
+            }
+            // Get changed files: files that differ between targetBranch and currentBranch
+            // This shows what has changed in currentBranch compared to targetBranch
+            const diffSummary = await git.diffSummary([`origin/${targetBranch}`, `origin/${currentBranch}`]);
+            // Filter only modified and added files (exclude deleted)
+            const changedFiles = [];
+            for (const file of diffSummary.files) {
+                if (file.binary)
+                    continue; // Skip binary files
+                // Skip files that were only deleted (no insertions, only deletions)
+                if (file.insertions === 0 && file.deletions > 0)
+                    continue;
+                // Check if file exists in current branch (it should since we're on it)
+                const filePath = path.join(repoPath, file.file);
+                if (fs.existsSync(filePath)) {
+                    const stats = fs.statSync(filePath);
+                    changedFiles.push({
+                        path: file.file,
+                        size: stats.size
+                    });
+                }
+            }
+            return changedFiles;
+        }
+        catch (error) {
+            const parsedError = GitErrorParser_1.GitErrorParser.parseSimpleGitError(error, targetBranch);
+            throw new Error(parsedError.message);
+        }
     }
 }
 exports.RepositoryService = RepositoryService;
