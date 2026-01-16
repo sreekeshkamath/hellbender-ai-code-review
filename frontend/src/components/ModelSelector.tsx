@@ -12,12 +12,17 @@ interface ModelSelectorProps {
 }
 
 export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorProps) {
-  const { models, loading, searchTerm, setSearchTerm } = useModels();
+  const { models, allModels, loading, searchTerm, setSearchTerm, freeModelId } = useModels();
   const [showCustomOnly, setShowCustomOnly] = useState(false);
 
-  const displayedModels = showCustomOnly
-    ? models.filter(model => model.provider.toLowerCase() === 'custom')
-    : models;
+  const customModels = models.filter(model => model.provider.toLowerCase() === 'custom');
+  const displayedModels = showCustomOnly ? customModels : models;
+  const withPinnedFree = freeModelId && !displayedModels.some(model => model.id === freeModelId)
+    ? [
+        ...allModels.filter(model => model.id === freeModelId),
+        ...displayedModels
+      ]
+    : displayedModels;
 
   if (loading) {
     return (
@@ -64,9 +69,9 @@ export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorPro
             className="w-full bg-zinc-900 border border-zinc-800 px-3 py-2 text-[11px] font-mono focus:outline-none focus:border-zinc-500 transition-all text-zinc-200"
           >
             <option value="" className="bg-zinc-950">Choose a model...</option>
-            {displayedModels.map((model) => (
+            {withPinnedFree.map((model) => (
               <option key={model.id} value={model.id} className="bg-zinc-950">
-                {model.name} ({model.provider})
+                {model.name} ({model.provider}){model.id === freeModelId ? ' • Free' : ''}
               </option>
             ))}
           </select>
@@ -77,7 +82,7 @@ export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorPro
         <div className="flex items-center gap-2 px-3 py-2 rounded border border-white bg-white text-black">
           <div className="w-1.5 h-1.5 rounded-full bg-black" />
           <span className="text-[10px] font-mono truncate">
-            Active: {models.find(m => m.id === selectedModel)?.name}
+            Active: {allModels.find(m => m.id === selectedModel)?.name}
           </span>
         </div>
       )}

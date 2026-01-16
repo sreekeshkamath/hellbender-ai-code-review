@@ -1,14 +1,22 @@
-import { useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { ActivityLogEntry } from '../types/models.types';
 
 const MAX_ENTRIES = 100;
 
-export function useActivityLog() {
+interface ActivityLogContextValue {
+  logs: ActivityLogEntry[];
+  addLog: (type: ActivityLogEntry['type'], message: string) => void;
+  clearLogs: () => void;
+}
+
+const ActivityLogContext = createContext<ActivityLogContextValue | null>(null);
+
+export function ActivityLogProvider({ children }: { children: React.ReactNode }) {
   const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
 
   const addLog = useCallback((type: ActivityLogEntry['type'], message: string) => {
     const newEntry: ActivityLogEntry = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random()}`, // More unique ID
       timestamp: new Date(),
       type,
       message,
@@ -24,9 +32,19 @@ export function useActivityLog() {
     setLogs([]);
   }, []);
 
-  return {
+  const value = useMemo<ActivityLogContextValue>(() => ({
     logs,
     addLog,
     clearLogs,
-  };
+  }), [logs, addLog, clearLogs]);
+
+  return React.createElement(ActivityLogContext.Provider, { value }, children);
+}
+
+export function useActivityLog() {
+  const context = useContext(ActivityLogContext);
+  if (!context) {
+    throw new Error('useActivityLog must be used within an ActivityLogProvider');
+  }
+  return context;
 }

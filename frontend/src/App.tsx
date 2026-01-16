@@ -50,6 +50,8 @@ const NavigationItem: React.FC<{ icon: any; label: string; isActive?: boolean; o
 function App() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<'repo' | 'model' | 'files' | 'saved'>('repo');
+  const [consoleHeight, setConsoleHeight] = useState(192); // Default h-48 is 192px
+  const [isResizing, setIsResizing] = useState(false);
 
   const { addLog } = useActivityLog();
   const { selectedModel, setSelectedModel } = useModels();
@@ -61,6 +63,38 @@ function App() {
     addLog('info', `Loading repository: ${repo.name}`);
   };
 
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const newHeight = window.innerHeight - e.clientY;
+      if (newHeight > 100 && newHeight < window.innerHeight * 0.8) {
+        setConsoleHeight(newHeight);
+      }
+    }
+  }, [isResizing]);
+
+  React.useEffect(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', resize);
+      window.addEventListener('mouseup', stopResizing);
+    } else {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    }
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [isResizing, resize, stopResizing]);
+
   const handleAnalyze = async () => {
     if (!repoId || !selectedModel || selectedFiles.length === 0) {
       addLog('error', 'Please select repository, model, and files');
@@ -68,10 +102,21 @@ function App() {
     }
 
     try {
-      addLog('info', `Starting analysis with ${selectedModel} on ${selectedFiles.length} files`);
       const selectedFileInfos = files.filter(f => selectedFiles.includes(f.path));
-      await analyze(repoId, selectedModel, selectedFileInfos);
-      addLog('success', 'Analysis completed');
+      
+      // Use onProgress callback to log detailed status
+      await analyze(repoId, selectedModel, selectedFileInfos, (message) => {
+        // Determine log type based on message content
+        let logType: 'info' | 'success' | 'error' | 'warning' = 'info';
+        if (message.toUpperCase().includes('ERROR')) {
+          logType = 'error';
+        } else if (message.toUpperCase().includes('COMPLETE') || message.toUpperCase().includes('SUCCESSFUL')) {
+          logType = 'success';
+        } else if (message.toUpperCase().includes('WARNING')) {
+          logType = 'warning';
+        }
+        addLog(logType, message);
+      });
     } catch (error) {
       addLog('error', `Analysis failed: ${(error as Error).message}`);
     }
@@ -206,7 +251,16 @@ function App() {
                 </div>
               )}
             </div>
-            <div className="h-48 border-t border-zinc-800 bg-black">
+            <div 
+              style={{ height: `${consoleHeight}px` }} 
+              className="border-t border-zinc-800 bg-black relative flex flex-col group/console"
+            >
+              <div
+                onMouseDown={startResizing}
+                className="absolute -top-1 left-0 right-0 h-2 cursor-ns-resize hover:bg-white/10 transition-colors z-50 flex items-center justify-center"
+              >
+                <div className="w-8 h-0.5 bg-zinc-800 rounded-full group-hover/console:bg-zinc-600 transition-colors" />
+              </div>
               <ActivityLog />
             </div>
           </div>

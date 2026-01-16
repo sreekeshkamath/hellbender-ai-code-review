@@ -1,8 +1,45 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Model } from '../types/api.types';
 import { ReviewService } from '../services/ReviewService';
 
-export function useModels() {
+interface ModelsContextValue {
+  models: Model[];
+  allModels: Model[];
+  selectedModel: string;
+  setSelectedModel: (modelId: string) => void;
+  loading: boolean;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  customModels: Model[];
+  freeModelId: string | null;
+}
+
+const ModelsContext = createContext<ModelsContextValue | null>(null);
+
+const FREE_MODEL_FALLBACK_ID = 'openai/gpt-4o-mini';
+
+const isFreeModel = (model: Model) => {
+  const normalizedName = model.name.toLowerCase();
+  const normalizedProvider = model.provider.toLowerCase();
+  return normalizedName.includes('free') || normalizedProvider.includes('free') || model.id.toLowerCase().includes(':free');
+};
+
+const resolveFreeModelId = (models: Model[]) => {
+  if (models.length === 0) return null;
+  const explicitFree = models.find(isFreeModel);
+  if (explicitFree) return explicitFree.id;
+  const fallback = models.find(model => model.id === FREE_MODEL_FALLBACK_ID);
+  return fallback ? fallback.id : models[0].id;
+};
+
+const orderWithFreeFirst = (models: Model[], freeModelId: string | null) => {
+  if (!freeModelId) return models;
+  const freeModel = models.find(model => model.id === freeModelId);
+  const rest = models.filter(model => model.id !== freeModelId);
+  return freeModel ? [freeModel, ...rest] : models;
+};
+
+export function ModelsProvider({ children }: { children: React.ReactNode }) {
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -15,8 +52,10 @@ export function useModels() {
         const reviewService = new ReviewService();
         const fetchedModels = await reviewService.getModels();
         setModels(fetchedModels);
-        if (fetchedModels.length > 0 && !selectedModel) {
-          setSelectedModel(fetchedModels[0].id);
+
+        const freeModelId = resolveFreeModelId(fetchedModels);
+        if (freeModelId && !selectedModel) {
+          setSelectedModel(freeModelId);
         }
       } catch (error) {
         console.error('Failed to fetch models:', error);
@@ -28,19 +67,37 @@ export function useModels() {
     fetchModels();
   }, []);
 
+  const freeModelId = useMemo(() => resolveFreeModelId(models), [models]);
+
   const filteredModels = useMemo(() => {
-    if (!searchTerm) return models;
-    return models.filter(model =>
-      model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      model.provider.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [models, searchTerm]);
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const baseList = normalizedSearch
+      ? models.filter(model =>
+          model.name.toLowerCase().includes(normalizedSearch) ||
+          model.provider.toLowerCase().includes(normalizedSearch)
+        )
+      : models;
+
+    const ordered = orderWithFreeFirst(baseList, freeModelId);
+
+    if (!freeModelId) {
+      return ordered;
+    }
+
+    const hasFree = ordered.some(model => model.id === freeModelId);
+    if (hasFree) {
+      return ordered;
+    }
+
+    const freeModel = models.find(model => model.id === freeModelId);
+    return freeModel ? [freeModel, ...ordered] : ordered;
+  }, [models, searchTerm, freeModelId]);
 
   const customModels = useMemo(() => {
     return models.filter(model => model.provider.toLowerCase() === 'custom');
   }, [models]);
 
-  return {
+  const value = useMemo<ModelsContextValue>(() => ({
     models: filteredModels,
     allModels: models,
     selectedModel,
@@ -49,5 +106,16 @@ export function useModels() {
     searchTerm,
     setSearchTerm,
     customModels,
-  };
+    freeModelId,
+  }), [filteredModels, models, selectedModel, loading, searchTerm, customModels, freeModelId]);
+
+  return React.createElement(ModelsContext.Provider, { value }, children);
+}
+
+export function useModels() {
+  const context = useContext(ModelsContext);
+  if (!context) {
+    throw new Error('useModels must be used within a ModelsProvider');
+  }
+  return context;
 }

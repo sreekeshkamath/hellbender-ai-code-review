@@ -13,19 +13,32 @@ export class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
-        console.error('API Error:', error);
-        return Promise.reject(error);
+        const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+        console.error('API Error:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          status: error.response?.status,
+          message: errorMessage,
+          error: error
+        });
+        // Create a more descriptive error
+        const apiError = new Error(errorMessage);
+        (apiError as any).status = error.response?.status;
+        (apiError as any).response = error.response;
+        return Promise.reject(apiError);
       }
     );
   }
 
-  async get<T = any>(url: string, params?: any): Promise<T> {
-    const response: AxiosResponse<T> = await this.client.get(url, { params });
+  async get<T = any>(url: string, params?: any, timeout?: number): Promise<T> {
+    const config = { params, ...(timeout && { timeout }) };
+    const response: AxiosResponse<T> = await this.client.get(url, config);
     return response.data;
   }
 
-  async post<T = any>(url: string, data?: any): Promise<T> {
-    const response: AxiosResponse<T> = await this.client.post(url, data);
+  async post<T = any>(url: string, data?: any, timeout?: number): Promise<T> {
+    const config = timeout ? { timeout } : undefined;
+    const response: AxiosResponse<T> = await this.client.post(url, data, config);
     return response.data;
   }
 

@@ -1,8 +1,15 @@
-
+import { useEffect, useRef } from 'react';
 import { useActivityLog } from '../hooks/useActivityLog';
 
 export function ActivityLog() {
   const { logs, clearLogs } = useActivityLog();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   return (
     <div className="h-full bg-black flex flex-col">
@@ -19,23 +26,47 @@ export function ActivityLog() {
           <span className="text-[9px] font-mono">CLEAR</span>
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-[11px]">
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 space-y-1 font-mono text-[10px] scroll-smooth"
+      >
         {logs.length === 0 ? (
           <span className="text-zinc-800 italic uppercase">Awaiting process signals...</span>
         ) : (
-          logs.slice().reverse().map(log => (
-            <div key={log.id} className="flex space-x-3 text-zinc-500">
-              <span className="text-zinc-800 shrink-0 select-none">[{log.timestamp.toLocaleTimeString()}]</span>
-              <span className={`px-1 font-bold uppercase shrink-0 ${
-                log.type === 'error' ? 'bg-red-800 text-white' :
-                log.type === 'warning' ? 'bg-yellow-500 text-black' :
-                log.type === 'success' ? 'bg-white text-black' : 'text-zinc-600'
-              }`}>
-                {log.type}
-              </span>
-              <span className="text-zinc-400">{log.message}</span>
-            </div>
-          ))
+          logs.map(log => {
+            const isError = log.type === 'error';
+            const isSuccess = log.type === 'success';
+            const isSeparator = log.message.startsWith('═') || log.message.startsWith('─');
+            
+            return (
+              <div 
+                key={log.id} 
+                className={`flex space-x-3 ${
+                  isError ? 'text-red-400' : 
+                  isSuccess ? 'text-green-400' : 
+                  isSeparator ? 'text-zinc-700' :
+                  'text-zinc-500'
+                }`}
+              >
+                <span className="text-zinc-800 shrink-0 select-none">[{log.timestamp.toLocaleTimeString()}]</span>
+                <span className={`px-1 font-bold uppercase shrink-0 ${
+                  log.type === 'error' ? 'bg-red-900/50 text-red-400 border border-red-800' :
+                  log.type === 'warning' ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-800' :
+                  log.type === 'success' ? 'bg-green-900/50 text-green-400 border border-green-800' : 
+                  'text-zinc-600'
+                }`}>
+                  {log.type}
+                </span>
+                <span className={`flex-1 break-words ${
+                  isError ? 'text-red-300' : 
+                  isSuccess ? 'text-green-300' : 
+                  'text-zinc-400'
+                }`}>
+                  {log.message}
+                </span>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

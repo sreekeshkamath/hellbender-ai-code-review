@@ -12,14 +12,51 @@ export function RepositoryConfig() {
   const { addLog } = useActivityLog();
 
   const handleClone = async () => {
-    if (!repoUrl.trim()) return;
+    console.log('handleClone called', { repoUrl, branch, isValid: isValidUrl(repoUrl) });
+    if (!repoUrl.trim()) {
+      console.warn('Clone aborted: empty repoUrl');
+      const errorMsg = 'Please enter a repository URL';
+      addLog('error', errorMsg);
+      return;
+    }
+
+    if (!isValidUrl(repoUrl)) {
+      console.warn('Clone aborted: invalid URL', repoUrl);
+      const errorMsg = 'Please enter a valid Git repository URL';
+      addLog('error', errorMsg);
+      return;
+    }
 
     try {
-      addLog('info', `Cloning repository: ${repoUrl}`);
-      await clone(repoUrl, branch);
-      addLog('success', 'Repository cloned successfully');
+      addLog('info', `Cloning repository: ${repoUrl} (branch: ${branch})`);
+      console.log('Starting clone...', { repoUrl, branch });
+      const result = await clone(repoUrl, branch);
+      console.log('Clone successful:', result);
+      addLog('success', result.cached ? 'Repository loaded from cache' : 'Repository cloned successfully');
+      addLog('info', `Found ${result.files.length} files`);
     } catch (error) {
-      addLog('error', `Failed to clone repository: ${(error as Error).message}`);
+      const errorMessage = (error as Error).message;
+      console.error('Clone failed:', error);
+      
+      // Check if it's a branch error and display it prominently
+      const isBranchError = errorMessage.toLowerCase().includes('branch') && 
+                           (errorMessage.toLowerCase().includes('not found') || 
+                            errorMessage.toLowerCase().includes('does not exist') ||
+                            errorMessage.toLowerCase().includes('could not find'));
+      
+      if (isBranchError) {
+        addLog('error', `═══════════════════════════════════════════════════════`);
+        addLog('error', `CLONE ERROR: Branch Not Found`);
+        addLog('error', `───────────────────────────────────────────────────────`);
+        addLog('error', errorMessage);
+        addLog('error', `═══════════════════════════════════════════════════════`);
+      } else {
+        addLog('error', `═══════════════════════════════════════════════════════`);
+        addLog('error', `CLONE ERROR`);
+        addLog('error', `───────────────────────────────────────────────────────`);
+        addLog('error', errorMessage);
+        addLog('error', `═══════════════════════════════════════════════════════`);
+      }
     }
   };
 
@@ -27,11 +64,20 @@ export function RepositoryConfig() {
     if (!repoId) return;
 
     try {
-      addLog('info', `Syncing repository: ${repoUrl}`);
+      addLog('info', `Syncing repository: ${repoUrl} (branch: ${branch})`);
       await sync(repoUrl, branch);
       addLog('success', 'Repository synced successfully');
     } catch (error) {
-      addLog('error', `Failed to sync repository: ${(error as Error).message}`);
+      const errorMessage = (error as Error).message;
+      const isBranchError = errorMessage.toLowerCase().includes('branch') && 
+                           (errorMessage.toLowerCase().includes('not found') || 
+                            errorMessage.toLowerCase().includes('does not exist'));
+      
+      if (isBranchError) {
+        addLog('error', `Branch Error: ${errorMessage}`);
+      } else {
+        addLog('error', `Failed to sync repository: ${errorMessage}`);
+      }
     }
   };
 
@@ -49,7 +95,9 @@ export function RepositoryConfig() {
           <input
             type="text"
             value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
+            onChange={(e) => {
+              setRepoUrl(e.target.value);
+            }}
             placeholder="https://github.com/username/repo"
             disabled={isLoading}
             className="w-full bg-zinc-900/50 border border-zinc-800 px-3 py-2 text-[11px] font-mono focus:outline-none focus:border-zinc-500 focus:bg-zinc-900 transition-all text-zinc-200 placeholder:text-zinc-700"
@@ -61,7 +109,9 @@ export function RepositoryConfig() {
           <input
             type="text"
             value={branch}
-            onChange={(e) => setBranch(e.target.value)}
+            onChange={(e) => {
+              setBranch(e.target.value);
+            }}
             placeholder="main"
             disabled={isLoading}
             className="w-full bg-zinc-900/50 border border-zinc-800 px-3 py-2 text-[11px] font-mono focus:outline-none focus:border-zinc-500 focus:bg-zinc-900 transition-all text-zinc-200 placeholder:text-zinc-700"
@@ -71,7 +121,11 @@ export function RepositoryConfig() {
 
       <div className="flex gap-2 pt-2">
         <button
-          onClick={handleClone}
+          onClick={(e) => {
+            e.preventDefault();
+            console.log('Clone button clicked');
+            handleClone();
+          }}
           disabled={!repoUrl.trim() || !isValidUrl(repoUrl) || isLoading}
           className="flex-1 bg-white text-black px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-zinc-200 transition-colors disabled:opacity-20 flex items-center justify-center space-x-2"
         >

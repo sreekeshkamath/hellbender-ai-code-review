@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -12,17 +12,17 @@ interface FileSelectorProps {
 
 export function FileSelector({ selectedFiles, onSelectionChange }: FileSelectorProps) {
   const { files, repoId, getFiles, isLoading } = useRepository();
-  const [localFiles, setLocalFiles] = useState(files);
 
+  // Fetch files if we have a repoId but no files in context (e.g., when loading a saved repo)
+  // Clone/sync operations already set files in context, so we don't need to fetch in those cases
   useEffect(() => {
-    setLocalFiles(files);
-  }, [files]);
-
-  useEffect(() => {
-    if (repoId) {
-      getFiles().then(setLocalFiles).catch(console.error);
+    if (repoId && files.length === 0 && !isLoading) {
+      getFiles().catch(console.error);
     }
-  }, [repoId, getFiles]);
+  }, [repoId, files.length, isLoading, getFiles]);
+
+  // Use files directly from context - they're set by clone/sync operations
+  const displayFiles = files;
 
   const handleFileToggle = (filePath: string) => {
     const newSelection = selectedFiles.includes(filePath)
@@ -32,7 +32,7 @@ export function FileSelector({ selectedFiles, onSelectionChange }: FileSelectorP
   };
 
   const handleSelectAll = () => {
-    onSelectionChange(localFiles.map(f => f.path));
+    onSelectionChange(displayFiles.map(f => f.path));
   };
 
   const handleSelectNone = () => {
@@ -55,12 +55,12 @@ export function FileSelector({ selectedFiles, onSelectionChange }: FileSelectorP
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-          Files ({localFiles.length})
+          Files ({displayFiles.length})
         </span>
         <div className="flex gap-1">
           <button
             onClick={handleSelectAll}
-            disabled={localFiles.length === 0}
+            disabled={displayFiles.length === 0}
             className="px-2 py-1 text-[9px] font-black uppercase tracking-widest border border-zinc-800 text-zinc-600 hover:border-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-30"
           >
             All
@@ -81,13 +81,13 @@ export function FileSelector({ selectedFiles, onSelectionChange }: FileSelectorP
             <div className="w-6 h-6 border-2 border-white border-t-transparent animate-spin" />
             <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-tight animate-pulse">Scanning files...</p>
           </div>
-        ) : localFiles.length === 0 ? (
+        ) : displayFiles.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-[9px] font-mono text-zinc-800 italic uppercase tracking-tight">No files found in repository</p>
           </div>
         ) : (
           <div className="space-y-1">
-            {localFiles.map((file) => (
+            {displayFiles.map((file) => (
               <div
                 key={file.path}
                 onClick={() => handleFileToggle(file.path)}

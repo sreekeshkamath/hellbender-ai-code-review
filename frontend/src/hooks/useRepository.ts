@@ -1,8 +1,18 @@
-import { useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { RepositoryState } from '../types/models.types';
+import { Repository } from '../types/api.types';
 import { RepositoryService } from '../services/RepositoryService';
 
-export function useRepository() {
+interface RepositoryContextValue extends RepositoryState {
+  clone: (repoUrl: string, branch?: string) => Promise<Repository>;
+  sync: (repoUrl: string, branch?: string) => Promise<Repository>;
+  getFiles: () => Promise<Repository['files']>;
+  clear: () => void;
+}
+
+const RepositoryContext = createContext<RepositoryContextValue | null>(null);
+
+export function RepositoryProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<RepositoryState>({
     repoId: null,
     repoPath: null,
@@ -84,11 +94,21 @@ export function useRepository() {
     });
   }, []);
 
-  return {
+  const value = useMemo<RepositoryContextValue>(() => ({
     ...state,
     clone,
     sync,
     getFiles,
     clear,
-  };
+  }), [state, clone, sync, getFiles, clear]);
+
+  return React.createElement(RepositoryContext.Provider, { value }, children);
+}
+
+export function useRepository() {
+  const context = useContext(RepositoryContext);
+  if (!context) {
+    throw new Error('useRepository must be used within a RepositoryProvider');
+  }
+  return context;
 }
