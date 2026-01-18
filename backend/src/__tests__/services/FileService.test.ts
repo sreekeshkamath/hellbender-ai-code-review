@@ -38,10 +38,15 @@ describe('FileService', () => {
 
     it('should exclude .git directory', () => {
       const mockDir = '/test/dir';
+      const gitPath = '/test/dir/.git';
       mockedPath.join.mockImplementation((...args) => args.join('/'));
-      (mockedFs.readdirSync as jest.Mock).mockReturnValue(['.git', 'file.txt']);
+      (mockedFs.readdirSync as jest.Mock).mockImplementation((dir: string) => {
+        if (dir === mockDir) return ['.git', 'file.txt'];
+        // Return empty array for any other directory to prevent infinite recursion
+        return [];
+      });
       mockedFs.statSync.mockImplementation((filePath) => ({
-        isDirectory: () => filePath === '/test/dir/.git',
+        isDirectory: () => filePath === gitPath,
       } as any));
 
       const result = FileService.getAllFiles(mockDir);
