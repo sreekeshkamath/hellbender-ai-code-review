@@ -1,7 +1,7 @@
 import * as path from 'path';
 
-export const REPOS_DIR = path.join(__dirname, '../../../temp/repos');
-export const DATA_DIR = path.join(__dirname, '../../../data');
+export const REPOS_DIR = path.join(__dirname, '../../temp/repos');
+export const DATA_DIR = path.join(__dirname, '../../data');
 export const REPOS_FILE = path.join(DATA_DIR, 'repos.json.enc');
 export const MAPPINGS_FILE = path.join(DATA_DIR, 'repo-mappings.json');
 
