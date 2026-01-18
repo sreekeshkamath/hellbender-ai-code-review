@@ -84,7 +84,23 @@ Return ONLY valid JSON, no markdown formatting.`;
     });
 
     const responseText = completion.choices[0].message.content;
-    const analysis = JSON.parse(responseText);
+    let analysis;
+    
+    try {
+      // More robust JSON extraction: find the first '{' and last '}'
+      let cleanResponse = responseText.trim();
+      const firstBrace = cleanResponse.indexOf('{');
+      const lastBrace = cleanResponse.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        cleanResponse = cleanResponse.substring(firstBrace, lastBrace + 1);
+      }
+      
+      analysis = JSON.parse(cleanResponse);
+    } catch (parseError) {
+      console.error('Failed to parse JSON response:', responseText);
+      throw new Error('Invalid JSON response from AI model');
+    }
 
     return {
       ...analysis,

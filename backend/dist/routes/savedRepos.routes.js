@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const SavedReposController_1 = require("../controllers/SavedReposController");
+const router = (0, express_1.Router)();
+router.get('/', SavedReposController_1.SavedReposController.getAll);
+router.post('/', SavedReposController_1.SavedReposController.create);
+router.delete('/:id', SavedReposController_1.SavedReposController.delete);
+router.put('/:id/touch', SavedReposController_1.SavedReposController.touch);
+exports.default = router;

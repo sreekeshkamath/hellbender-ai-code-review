@@ -18,8 +18,8 @@ An AI-powered code review application that analyzes your codebase for issues, vu
 
 ## Storage
 
-- **Cloned Repositories**: Stored in `temp/repos/{uuid}/` - not version controlled, auto-cleaned on clear
-- **Saved Repositories**: Encrypted storage in `data/repos.json.enc` with AES-256 encryption
+- **Cloned Repositories**: Stored in `backend/temp/repos/{uuid}/` - not version controlled, auto-cleaned on clear
+- **Saved Repositories**: Encrypted storage in `backend/data/repos.json.enc` with AES-256 encryption
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ npm install
 
 3. Install frontend dependencies:
 ```bash
-cd client
+cd frontend
 npm install
 cd ..
 ```
@@ -77,7 +77,8 @@ npm run dev
 
 Frontend only:
 ```bash
-npm run client
+cd frontend
+npm run dev
 ```
 
 ## Usage
@@ -161,12 +162,38 @@ Request body:
 | PORT | Backend server port | 3001 |
 | SITE_URL | Site URL for OpenRouter referrer | http://localhost:5173 |
 
+## Architecture
+
+This application uses a monorepo structure with separate backend and frontend packages:
+
+```
+ai-code-reviewer/
+├── backend/          # TypeScript Express server
+│   ├── src/
+│   │   ├── controllers/  # Route handlers
+│   │   ├── services/     # Business logic classes
+│   │   ├── models/       # TypeScript interfaces
+│   │   ├── routes/       # Express route definitions
+│   │   └── utils/        # Helper functions
+│   └── package.json
+├── frontend/         # TypeScript React application
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   ├── hooks/        # Custom React hooks
+│   │   ├── services/     # API client classes
+│   │   ├── types/        # TypeScript types
+│   │   └── utils/        # Helper functions
+│   └── package.json
+└── README.md
+```
+
 ## Tech Stack
 
-- **Backend**: Node.js, Express, simple-git
-- **Frontend**: React, Vite, Axios
+- **Backend**: Node.js, TypeScript, Express, simple-git
+- **Frontend**: React, TypeScript, Vite, Axios, Tailwind CSS
 - **AI**: OpenRouter API (access to multiple models)
-- **Styling**: Custom CSS
+- **Testing**: Jest, Supertest
+- **Styling**: Tailwind CSS, Radix UI components
 
 ## License
 
