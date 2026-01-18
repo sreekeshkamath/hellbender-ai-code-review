@@ -123,10 +123,21 @@ export class RepositoryService {
       : repoUrl;
 
     try {
-      // Update origin URL with potential new auth token or URL
-      // This ensures that if credentials change, they are applied correctly
-      await git.remote(['set-url', 'origin', authRepoUrl]);
+      // Ensure the remote exists and update it with the authenticated URL
+      // This is critical: without updating the remote URL, git.fetch('origin', branch)
+      // will use the old URL from .git/config, ignoring the authRepoUrl we constructed
+      const remotes = await git.getRemotes(true);
+      const originExists = remotes.some(remote => remote.name === 'origin');
       
+      if (originExists) {
+        // Update existing remote URL with the authenticated URL
+        await git.remote(['set-url', 'origin', authRepoUrl]);
+      } else {
+        // Add remote if it doesn't exist
+        await git.addRemote('origin', authRepoUrl);
+      }
+      
+      // Now fetch from 'origin' - this will use the updated authenticated URL
       await git.fetch('origin', branch);
       await git.reset(['--hard', `origin/${branch}`]);
     } catch (error: any) {

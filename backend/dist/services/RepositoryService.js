@@ -46,6 +46,10 @@ const RepositoryMappingService_1 = require("./RepositoryMappingService");
 const constants_1 = require("../config/constants");
 const GitErrorParser_1 = require("../utils/GitErrorParser");
 const PathValidator_1 = require("../utils/PathValidator");
+// Ensure REPOS_DIR exists before any operations
+if (!fs.existsSync(constants_1.REPOS_DIR)) {
+    fs.mkdirSync(constants_1.REPOS_DIR, { recursive: true });
+}
 class RepositoryService {
     static isValidRepoUrl(url) {
         if (!url || typeof url !== 'string')
@@ -136,6 +140,20 @@ class RepositoryService {
             ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
             : repoUrl;
         try {
+            // Ensure the remote exists and update it with the authenticated URL
+            // This is critical: without updating the remote URL, git.fetch('origin', branch)
+            // will use the old URL from .git/config, ignoring the authRepoUrl we constructed
+            const remotes = await git.getRemotes(true);
+            const originExists = remotes.some(remote => remote.name === 'origin');
+            if (originExists) {
+                // Update existing remote URL with the authenticated URL
+                await git.remote(['set-url', 'origin', authRepoUrl]);
+            }
+            else {
+                // Add remote if it doesn't exist
+                await git.addRemote('origin', authRepoUrl);
+            }
+            // Now fetch from 'origin' - this will use the updated authenticated URL
             await git.fetch('origin', branch);
             await git.reset(['--hard', `origin/${branch}`]);
         }
@@ -235,8 +253,6 @@ class RepositoryService {
         }
         const git = (0, simple_git_1.default)(repoPath);
         try {
-            // Fetch all branches to ensure we have both branches
-            await git.fetch(['--all']);
             // Get the current branch if not specified
             if (!currentBranch) {
                 const branchSummary = await git.branchLocal();
@@ -245,6 +261,14 @@ class RepositoryService {
             // Validate current branch name if provided
             if (currentBranch && !(0, PathValidator_1.validateBranchName)(currentBranch)) {
                 throw new Error('Invalid current branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
+            }
+            // Fetch the specific branches we need for comparison
+            // Since clone uses --single-branch, we need to explicitly fetch other branches
+            // Fetch target branch first
+            await git.fetch('origin', targetBranch);
+            // Fetch current branch if it's different from target branch
+            if (currentBranch !== targetBranch) {
+                await git.fetch('origin', currentBranch);
             }
             // Get changed files: files that differ between targetBranch and currentBranch
             // This shows what has changed in currentBranch compared to targetBranch
