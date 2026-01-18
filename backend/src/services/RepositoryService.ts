@@ -10,6 +10,11 @@ import { REPOS_DIR, GITHUB_ACCESS_TOKEN } from '../config/constants';
 import { GitErrorParser } from '../utils/GitErrorParser';
 import { validateRepoPath, validateFilePath, validateBranchName } from '../utils/PathValidator';
 
+// Ensure REPOS_DIR exists before any operations
+if (!fs.existsSync(REPOS_DIR)) {
+  fs.mkdirSync(REPOS_DIR, { recursive: true });
+}
+
 export class RepositoryService {
   private static isValidRepoUrl(url: string): boolean {
     if (!url || typeof url !== 'string') return false;
@@ -118,6 +123,10 @@ export class RepositoryService {
       : repoUrl;
 
     try {
+      // Update origin URL with potential new auth token or URL
+      // This ensures that if credentials change, they are applied correctly
+      await git.remote(['set-url', 'origin', authRepoUrl]);
+      
       await git.fetch('origin', branch);
       await git.reset(['--hard', `origin/${branch}`]);
     } catch (error: any) {
@@ -236,9 +245,6 @@ export class RepositoryService {
     const git: SimpleGit = simpleGit(repoPath);
 
     try {
-      // Fetch all branches to ensure we have both branches
-      await git.fetch(['--all']);
-
       // Get the current branch if not specified
       if (!currentBranch) {
         const branchSummary = await git.branchLocal();
@@ -248,6 +254,15 @@ export class RepositoryService {
       // Validate current branch name if provided
       if (currentBranch && !validateBranchName(currentBranch)) {
         throw new Error('Invalid current branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.');
+      }
+
+      // Fetch the specific branches we need for comparison
+      // Since clone uses --single-branch, we need to explicitly fetch other branches
+      // Fetch target branch first
+      await git.fetch('origin', targetBranch);
+      // Fetch current branch if it's different from target branch
+      if (currentBranch !== targetBranch) {
+        await git.fetch('origin', currentBranch);
       }
 
       // Get changed files: files that differ between targetBranch and currentBranch
