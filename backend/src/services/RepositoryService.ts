@@ -283,11 +283,11 @@ export class RepositoryService {
   }
 
   static cloneWithDefaults(repoUrl: string, branch?: string): Promise<Repository> {
-    return this.clone(repoUrl, branch, GITHUB_ACCESS_TOKEN);
+    return this.clone(repoUrl, branch ?? 'main', GITHUB_ACCESS_TOKEN);
   }
 
   static syncWithDefaults(repoId: string, repoUrl: string, branch?: string): Promise<Repository> {
-    return this.sync(repoId, repoUrl, branch, GITHUB_ACCESS_TOKEN);
+    return this.sync(repoId, repoUrl, branch ?? 'main', GITHUB_ACCESS_TOKEN);
   }
 
   static async getChangedFiles(repoId: string, targetBranch: string, currentBranch?: string): Promise<FileInfo[]> {
