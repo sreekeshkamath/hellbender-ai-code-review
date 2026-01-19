@@ -110,3 +110,59 @@ export interface CreateSavedRepoRequest {
   repoId?: string | null;
   cloned?: boolean;
 }
+
+// Pull Request types
+export interface PullRequest {
+  id: string;
+  repoId: string;
+  title: string;
+  author: string;
+  status: 'open' | 'merged' | 'closed';
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  description: string;
+  sourceBranch: string;
+  targetBranch: string;
+  filesChanged: string[];
+}
+
+export interface Comment {
+  id: string;
+  prId: string;
+  author: string;
+  content: string;
+  createdAt: Date | string;
+  filePath?: string;
+  line?: number;
+  type: 'user' | 'ai';
+  severity?: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface DiffLine {
+  type: 'context' | 'addition' | 'deletion';
+  oldLineNumber: number | null;
+  newLineNumber: number | null;
+  content: string;
+}
+
+export interface DiffHunk {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: DiffLine[];
+}
+
+export interface FileDiff {
+  filePath: string;
+  additions: number;
+  deletions: number;
+  hunks: DiffHunk[];
+}
+
+export interface FileChange {
+  filePath: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  additions: number;
+  deletions: number;
+}
