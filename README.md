@@ -177,18 +177,11 @@ Delete a saved repository.
 
 This application uses a monorepo structure:
 
-```
+**Note**: Legacy CommonJS files (`server.js`, `routes/`, `utils/`) are obsolete and not used. The active backend implementation is in the `backend/` directory (TypeScript). The npm scripts (`start`, `dev`) point to the `backend/` directory.
+
+```plaintext
 hellbender-ai-code-review/
-├── server.js              # Express server entry point (CommonJS)
-├── routes/                # Route handlers
-│   ├── repo.js           # Repository cloning/management
-│   ├── review.js         # Code review endpoints
-│   └── savedRepos.js     # Saved repositories management
-├── utils/                 # Utility functions
-│   ├── openrouter.js     # OpenRouter API client
-│   ├── repoMapping.js    # Repository ID mapping
-│   └── repoStore.js      # Encrypted repository storage
-├── backend/               # TypeScript backend (alternative implementation)
+├── backend/               # TypeScript backend (active implementation)
 │   ├── src/
 │   │   ├── controllers/  # Route handlers
 │   │   ├── services/     # Business logic classes
