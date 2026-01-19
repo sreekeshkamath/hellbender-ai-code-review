@@ -6,15 +6,15 @@ export class RepositoryController {
   static async clone(req: Request, res: Response): Promise<void> {
     try {
       const { repoUrl, branch } = req.body;
-      
+
       // Validate branch name early to prevent command injection
       if (branch && !validateBranchName(branch)) {
-        res.status(400).json({ 
-          error: 'Invalid branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.' 
+        res.status(400).json({
+          error: 'Invalid branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.'
         });
         return;
       }
-      
+
       const result = await RepositoryService.cloneWithDefaults(repoUrl, branch);
       res.json(result);
     } catch (error) {
@@ -25,17 +25,17 @@ export class RepositoryController {
 
   static async sync(req: Request, res: Response): Promise<void> {
     try {
-      const { repoId } = req.params;
+      const repoId = req.params.repoId as string;
       const { repoUrl, branch } = req.body;
-      
+
       // Validate branch name early to prevent command injection
       if (branch && !validateBranchName(branch)) {
-        res.status(400).json({ 
-          error: 'Invalid branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.' 
+        res.status(400).json({
+          error: 'Invalid branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.'
         });
         return;
       }
-      
+
       const result = await RepositoryService.syncWithDefaults(repoId, repoUrl, branch);
       res.json(result);
     } catch (error) {
@@ -46,7 +46,7 @@ export class RepositoryController {
 
   static getFiles(req: Request, res: Response): void {
     try {
-      const { repoId } = req.params;
+      const repoId = req.params.repoId as string;
       const files = RepositoryService.getFiles(repoId);
       res.json({ files });
     } catch (error) {
@@ -57,7 +57,7 @@ export class RepositoryController {
 
   static getFile(req: Request, res: Response): void {
     try {
-      const { repoId } = req.params;
+      const repoId = req.params.repoId as string;
       const filePath = req.params[0];
       const content = RepositoryService.getFile(repoId, filePath);
       res.json({ content });
@@ -69,7 +69,7 @@ export class RepositoryController {
 
   static delete(req: Request, res: Response): void {
     try {
-      const { repoId } = req.params;
+      const repoId = req.params.repoId as string;
       RepositoryService.delete(repoId);
       res.json({ success: true });
     } catch (error) {
@@ -80,9 +80,9 @@ export class RepositoryController {
 
   static async getChangedFiles(req: Request, res: Response): Promise<void> {
     try {
-      const { repoId } = req.params;
+      const repoId = req.params.repoId as string;
       const { targetBranch, currentBranch } = req.query;
-      
+
       if (!targetBranch || typeof targetBranch !== 'string') {
         res.status(400).json({ error: 'targetBranch query parameter is required' });
         return;
@@ -90,15 +90,15 @@ export class RepositoryController {
 
       // Validate branch names early to prevent command injection
       if (!validateBranchName(targetBranch)) {
-        res.status(400).json({ 
-          error: 'Invalid target branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.' 
+        res.status(400).json({
+          error: 'Invalid target branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.'
         });
         return;
       }
 
       if (currentBranch && typeof currentBranch === 'string' && !validateBranchName(currentBranch)) {
-        res.status(400).json({ 
-          error: 'Invalid current branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.' 
+        res.status(400).json({
+          error: 'Invalid current branch name. Branch names can only contain alphanumeric characters, hyphens, underscores, forward slashes, and dots.'
         });
         return;
       }

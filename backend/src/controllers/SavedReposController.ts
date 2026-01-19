@@ -66,7 +66,7 @@ export class SavedReposController {
 
   static delete(req: Request, res: Response): void {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       SavedRepositoryService.delete(id);
       res.json({ success: true, message: 'Repository removed' });
     } catch (error) {
@@ -77,7 +77,7 @@ export class SavedReposController {
 
   static touch(req: Request, res: Response): void {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       SavedRepositoryService.touch(id);
       res.json({ success: true });
     } catch (error) {
