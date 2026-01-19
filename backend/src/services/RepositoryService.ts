@@ -23,6 +23,28 @@ export class RepositoryService {
     return gitUrlPattern.test(url.trim());
   }
 
+  /**
+   * Validates that a URL is from GitHub domain.
+   * This prevents leaking GitHub access tokens to non-GitHub servers.
+   */
+  private static isGitHubUrl(url: string): boolean {
+    if (!url || typeof url !== 'string') return false;
+    const trimmedUrl = url.trim();
+    
+    // Check for GitHub domains in various URL formats:
+    // - https://github.com/...
+    // - https://www.github.com/...
+    // - git@github.com:...
+    // - git://github.com/...
+    const githubPatterns = [
+      /^https?:\/\/(www\.)?github\.com\//i,
+      /^git@github\.com:/i,
+      /^git:\/\/github\.com\//i,
+    ];
+    
+    return githubPatterns.some(pattern => pattern.test(trimmedUrl));
+  }
+
   static async clone(repoUrl: string, branch: string = 'main', accessToken?: string): Promise<Repository> {
     if (!this.isValidRepoUrl(repoUrl)) {
       throw new Error('Please enter a valid Git repository URL (e.g., https://github.com/username/repo)');
@@ -60,9 +82,18 @@ export class RepositoryService {
     const repoPath = path.join(REPOS_DIR, repoId);
     const git: SimpleGit = simpleGit();
 
-    const authRepoUrl = accessToken
-      ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
-      : repoUrl;
+    // Only apply GitHub access token to GitHub URLs to prevent credential leakage
+    // This is a security measure: we should never send GitHub tokens to non-GitHub servers
+    let authRepoUrl = repoUrl;
+    if (accessToken) {
+      if (this.isGitHubUrl(repoUrl)) {
+        // Inject token for HTTPS GitHub URLs (GitHub uses HTTPS, not HTTP)
+        authRepoUrl = repoUrl.replace(/^https:\/\//, `https://oauth2:${accessToken}@`);
+      } else {
+        // Log warning if token is provided for non-GitHub URL (shouldn't happen in normal operation)
+        console.warn(`GitHub access token provided but URL is not from GitHub: ${repoUrl}. Token will not be used.`);
+      }
+    }
 
     console.log(`Cloning new repository: ${repoUrl} (${branch}) -> ${repoId}`);
 
@@ -130,9 +161,19 @@ export class RepositoryService {
     }
 
     const git: SimpleGit = simpleGit(repoPath);
-    const authRepoUrl = accessToken
-      ? repoUrl.replace('https://', `https://oauth2:${accessToken}@`)
-      : repoUrl;
+    
+    // Only apply GitHub access token to GitHub URLs to prevent credential leakage
+    // This is a security measure: we should never send GitHub tokens to non-GitHub servers
+    let authRepoUrl = repoUrl;
+    if (accessToken) {
+      if (this.isGitHubUrl(repoUrl)) {
+        // Inject token for HTTPS GitHub URLs (GitHub uses HTTPS, not HTTP)
+        authRepoUrl = repoUrl.replace(/^https:\/\//, `https://oauth2:${accessToken}@`);
+      } else {
+        // Log warning if token is provided for non-GitHub URL (shouldn't happen in normal operation)
+        console.warn(`GitHub access token provided but URL is not from GitHub: ${repoUrl}. Token will not be used.`);
+      }
+    }
 
     try {
       // Ensure the remote exists and update it with the authenticated URL
