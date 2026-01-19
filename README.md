@@ -31,6 +31,7 @@ An AI-powered code review application that analyzes your codebase for issues, vu
 
 1. Clone the repository:
 ```bash
+git clone https://github.com/sreekeshkamath/hellbender-ai-code-review.git
 cd hellbender-ai-code-review
 ```
 
@@ -217,8 +218,9 @@ hellbender-ai-code-review/
 |--------|-------------|
 | `npm run install:all` | Install all dependencies (root, backend, frontend) |
 | `npm run dev` | Start both backend and frontend in development mode |
+| `npm run dev:all` | Start both backend and frontend in development mode (alias for dev) |
 | `npm run client` | Start only the frontend in development mode |
-| `npm run build` | Build the frontend for production |
+| `npm run build` | Build both backend and frontend for production |
 | `npm start` | Start the production server |
 
 ## License
