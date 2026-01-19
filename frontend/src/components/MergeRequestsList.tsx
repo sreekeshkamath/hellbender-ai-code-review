@@ -1,14 +1,17 @@
-import React from 'react';
-import { GitPullRequest, GitBranch, Clock, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { GitPullRequest, GitBranch, Clock, User, Link2, Trash2 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
+import { Button } from './ui/button';
 import { PullRequest } from '../types/api.types';
+import { PullRequestService } from '../services/PullRequestService';
 import { cn } from '../lib/utils';
 
 interface MergeRequestsListProps {
   pullRequests: PullRequest[];
   selectedPR: PullRequest | null;
   onSelectPR: (pr: PullRequest) => void;
+  onDelete?: (prId: string) => void;
   isLoading?: boolean;
   repoId?: string;
 }
@@ -63,9 +66,31 @@ export function MergeRequestsList({
   pullRequests,
   selectedPR,
   onSelectPR,
+  onDelete,
   isLoading = false,
   repoId,
 }: MergeRequestsListProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const prService = new PullRequestService();
+
+  const handleDelete = async (e: React.MouseEvent, pr: PullRequest) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete "${pr.title}"?`)) {
+      return;
+    }
+
+    setDeletingId(pr.id);
+    try {
+      await prService.deletePR(pr.id);
+      if (onDelete) {
+        onDelete(pr.id);
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to delete merge request');
+    } finally {
+      setDeletingId(null);
+    }
+  };
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
@@ -157,11 +182,46 @@ export function MergeRequestsList({
                       <GitPullRequest size={10} className="mr-1" />
                       {getStatusLabel(pr.status)}
                     </Badge>
+                    {pr.isCloned && pr.originalPrId && (
+                      <Badge
+                        className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-black uppercase tracking-widest text-[10px] rounded-sm py-1 px-2"
+                        title={`Cloned from PR ${pr.originalPrId}`}
+                      >
+                        <Link2 size={10} className="mr-1" />
+                        Cloned
+                      </Badge>
+                    )}
+                    {pr.clonedPrIds && pr.clonedPrIds.length > 0 && (
+                      <Badge
+                        className="bg-orange-500/20 text-orange-400 border border-orange-500/30 font-black uppercase tracking-widest text-[10px] rounded-sm py-1 px-2"
+                        title={`Has ${pr.clonedPrIds.length} clone(s)`}
+                      >
+                        <Link2 size={10} className="mr-1" />
+                        {pr.clonedPrIds.length} Clone{pr.clonedPrIds.length !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
                       {pr.id}
                     </span>
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'text-zinc-600 hover:text-destructive transition-colors',
+                    pr.isCloned && pr.originalPrId && 'opacity-50 cursor-not-allowed'
+                  )}
+                  disabled={pr.isCloned && !!pr.originalPrId}
+                  onClick={(e) => handleDelete(e, pr)}
+                  title={
+                    pr.isCloned && pr.originalPrId
+                      ? 'Cannot delete cloned merge request. Delete the original first.'
+                      : 'Delete merge request'
+                  }
+                >
+                  <Trash2 size={14} />
+                </Button>
               </div>
 
               <div className="space-y-2">

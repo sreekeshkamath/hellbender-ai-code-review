@@ -45,4 +45,8 @@ export class PullRequestService extends ApiClient {
       { model }
     );
   }
+
+  async deletePR(prId: string): Promise<{ message: string }> {
+    return this.delete<{ message: string }>(`/api/pull-requests/${prId}`);
+  }
 }

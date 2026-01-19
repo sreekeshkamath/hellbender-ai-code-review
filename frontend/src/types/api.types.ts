@@ -124,6 +124,10 @@ export interface PullRequest {
   sourceBranch: string;
   targetBranch: string;
   filesChanged: string[];
+  // Clone tracking fields
+  originalPrId?: string;
+  clonedPrIds?: string[];
+  isCloned: boolean;
 }
 
 export interface Comment {
@@ -136,6 +140,17 @@ export interface Comment {
   line?: number;
   type: 'user' | 'ai';
   severity?: 'low' | 'medium' | 'high' | 'critical';
+  originalCommentId?: string;
+}
+
+export interface Approval {
+  id: string;
+  prId: string;
+  originalApprovalId?: string;
+  approver: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface DiffLine {

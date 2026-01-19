@@ -14,7 +14,9 @@ import {
   Sparkles,
   RefreshCw,
   Menu,
-  X
+  X,
+  Link2,
+  CheckCircle2
 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -226,10 +228,26 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
               {currentPR.title}
               <span className="text-zinc-700 font-mono italic not-uppercase text-xl">{currentPR.id}</span>
             </h1>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <Badge className={`${getStatusBadgeVariant(currentPR.status)} font-black uppercase tracking-widest text-[10px] rounded-sm py-1`}>
                 <GitPullRequest size={12} className="mr-1" />
                 {getStatusLabel(currentPR.status)}
+              </Badge>
+              {currentPR.isCloned && currentPR.originalPrId && (
+                <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-black uppercase tracking-widest text-[10px] rounded-sm py-1">
+                  <Link2 size={10} className="mr-1" />
+                  Cloned from {currentPR.originalPrId}
+                </Badge>
+              )}
+              {currentPR.clonedPrIds && currentPR.clonedPrIds.length > 0 && (
+                <Badge className="bg-orange-500/20 text-orange-400 border border-orange-500/30 font-black uppercase tracking-widest text-[10px] rounded-sm py-1">
+                  <Link2 size={10} className="mr-1" />
+                  {currentPR.clonedPrIds.length} Clone{currentPR.clonedPrIds.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+              <Badge className="bg-green-500/20 text-green-400 border border-green-500/30 font-black uppercase tracking-widest text-[10px] rounded-sm py-1">
+                <CheckCircle2 size={10} className="mr-1" />
+                Synced
               </Badge>
               <div className="text-[11px] font-mono text-zinc-500">
                 <span className="text-zinc-300">{currentPR.author}</span> requested to merge
