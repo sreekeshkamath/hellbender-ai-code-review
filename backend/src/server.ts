@@ -1,7 +1,7 @@
-import 'dotenv/config';
+import './load-env';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import * as path from 'path';
+import path from 'node:path';
 import { validateEnvironment } from './config/environment';
 import repositoryRoutes from './routes/repository.routes';
 import reviewRoutes from './routes/review.routes';
