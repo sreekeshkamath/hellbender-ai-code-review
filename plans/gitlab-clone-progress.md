@@ -4,9 +4,9 @@
 
 ## Current Status
 
-**Phase**: Phase 4 Complete
+**Phase**: Phase 6 Complete
 **Last Updated**: 2026-01-19
-**Last Step Completed**: Phase 4.4 - Created ChangesTab with FileTree + DiffViewer layout
+**Last Step Completed**: Phase 6.3 - Responsive behaviors added
 
 ---
 
@@ -38,14 +38,14 @@
 - [x] 4.4 Create ChangesTab with FileTree + DiffViewer layout
 
 ### Phase 5: AI Review Integration
-- [ ] 5.1 Add AI Review trigger button to PR detail header
-- [ ] 5.2 Convert analysis results to line-specific comments
-- [ ] 5.3 Render AI comments inline in DiffViewer
+- [x] 5.1 Add AI Review trigger button to PR detail header
+- [x] 5.2 Convert analysis results to line-specific comments
+- [x] 5.3 Render AI comments inline in DiffViewer
 
 ### Phase 6: Polish and UX
-- [ ] 6.1 Add skeleton loaders and loading overlays
-- [ ] 6.2 Implement keyboard navigation for files/comments
-- [ ] 6.3 Add responsive behaviors
+- [x] 6.1 Add skeleton loaders and loading overlays
+- [x] 6.2 Implement keyboard navigation for files/comments
+- [x] 6.3 Add responsive behaviors
 
 ---
 
@@ -77,6 +77,14 @@
 | `frontend/src/services/PullRequestService.ts` | Modified | Added getCommits method |
 | `frontend/src/components/CommitsTab.tsx` | Created | Commits tab component with commit list display |
 | `frontend/src/components/ChangesTab.tsx` | Created | Changes tab with FileTreePanel + DiffViewer layout |
+| `backend/src/controllers/PullRequestController.ts` | Modified | Added requestAIReview method to analyze PR files and create comments |
+| `backend/src/routes/pullRequest.routes.ts` | Modified | Added POST /:id/ai-review route |
+| `frontend/src/services/PullRequestService.ts` | Modified | Added requestAIReview method |
+| `frontend/src/components/MergeRequestsView.tsx` | Modified | Added AI Review button with loading state and comment refresh |
+| `frontend/src/components/ui/skeleton.tsx` | Created | Reusable skeleton loader component |
+| `frontend/src/components/MergeRequestsList.tsx` | Modified | Improved skeleton loader for PR list |
+| `frontend/src/components/ChangesTab.tsx` | Modified | Added skeleton loader, keyboard navigation (arrow keys, n/p), responsive layout |
+| `frontend/src/components/DiffViewer.tsx` | Modified | Added scroll-to-selected-line behavior for keyboard navigation |
 
 ---
 
@@ -102,7 +110,7 @@ _Record any blockers or issues encountered._
 
 _Brief summary of what was being worked on and next steps._
 
-**Next Step**: Continue with Phase 5 - AI Review Integration
+**Next Step**: Phase 6 complete! All planned features implemented. Ready for testing and further enhancements.
 
 **Important Files to Review**:
 - `plans/gitlab-clone-implementation.md` - Full implementation plan
