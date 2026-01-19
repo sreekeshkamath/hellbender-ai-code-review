@@ -3,6 +3,67 @@ const OpenAI = require('openai');
 import * as https from 'https';
 import { VulnerabilityScanner } from './VulnerabilityScanner';
 
+/**
+ * Check if debug logging is enabled for analysis service.
+ * Controlled via DEBUG_ANALYSIS_LOGS environment variable.
+ */
+function isDebugLoggingEnabled(): boolean {
+  return process.env.DEBUG_ANALYSIS_LOGS === 'true' || process.env.DEBUG_ANALYSIS_LOGS === '1';
+}
+
+/**
+ * Safely log analysis metadata without exposing sensitive code content.
+ */
+function logAnalysisMetadata(filePath: string, model: string, contentLength: number, lineCount: number): void {
+  console.log(`[ANALYSIS] Sending code to AI agent:`);
+  console.log(`  File: ${filePath}`);
+  console.log(`  Model: ${model}`);
+  console.log(`  Size: ${contentLength} chars, ${lineCount} lines`);
+}
+
+/**
+ * Log code preview only when debug logging is enabled.
+ * When enabled, shows truncated preview with redaction.
+ */
+function logCodePreview(content: string, lineCount: number): void {
+  if (!isDebugLoggingEnabled()) {
+    return;
+  }
+
+  const codePreview = content.length > 500
+    ? content.substring(0, 500) + '...'
+    : content;
+
+  console.log(`  Code preview (first 500 chars):`);
+  console.log(`  ${'─'.repeat(60)}`);
+  console.log(codePreview.split('\n').slice(0, 10).map((line: string) => `  ${line}`).join('\n'));
+  if (lineCount > 10) console.log(`  ... (${lineCount - 10} more lines)`);
+  console.log(`  ${'─'.repeat(60)}`);
+}
+
+/**
+ * Log AI response metadata without exposing sensitive content.
+ */
+function logResponseReceived(filePath: string, elapsed: number): void {
+  console.log(`[ANALYSIS] AI agent response received in ${elapsed}ms for ${filePath}`);
+}
+
+/**
+ * Log AI response content only when debug logging is enabled.
+ * When enabled, shows truncated/redacted response.
+ */
+function logResponseContent(responseText: string, context: string): void {
+  if (!isDebugLoggingEnabled()) {
+    return;
+  }
+
+  const truncated = responseText.length > 1000
+    ? responseText.substring(0, 1000) + '... [truncated]'
+    : responseText;
+
+  console.error(`[ANALYSIS DEBUG] ${context}:`, truncated);
+}
+
 export class AnalysisService {
   static async getOpenRouterModels(): Promise<any[]> {
     return new Promise((resolve, reject) => {
@@ -122,20 +183,13 @@ Focus on:
 Return ONLY valid JSON, no markdown formatting.`;
 
     try {
-      const codePreview = content.length > 500
-        ? content.substring(0, 500) + '...'
-        : content;
       const lineCount = content.split('\n').length;
 
-      console.log(`[ANALYSIS] Sending code to AI agent:`);
-      console.log(`  File: ${filePath}`);
-      console.log(`  Model: ${model}`);
-      console.log(`  Size: ${content.length} chars, ${lineCount} lines`);
-      console.log(`  Code preview (first 500 chars):`);
-      console.log(`  ${'─'.repeat(60)}`);
-      console.log(codePreview.split('\n').slice(0, 10).map((line: string) => `  ${line}`).join('\n'));
-      if (lineCount > 10) console.log(`  ... (${lineCount - 10} more lines)`);
-      console.log(`  ${'─'.repeat(60)}`);
+      // Log safe metadata (file path, model, size) - always logged
+      logAnalysisMetadata(filePath, model, content.length, lineCount);
+
+      // Log code preview only when debug logging is enabled
+      logCodePreview(content, lineCount);
 
       const startTime = Date.now();
 
@@ -156,7 +210,7 @@ Return ONLY valid JSON, no markdown formatting.`;
       });
 
       const elapsed = Date.now() - startTime;
-      console.log(`[ANALYSIS] AI agent response received in ${elapsed}ms for ${filePath}`);
+      logResponseReceived(filePath, elapsed);
 
       // Defensive guard: ensure completion and content exist
       if (!completion || !completion.choices || !completion.choices[0] || !completion.choices[0].message) {
@@ -183,7 +237,8 @@ Return ONLY valid JSON, no markdown formatting.`;
 
         analysis = JSON.parse(cleanResponse);
       } catch (parseError) {
-        console.error('Failed to parse JSON response:', responseText);
+        // Log response content only when debug logging is enabled
+        logResponseContent(responseText, 'Failed to parse JSON response');
         throw new Error('Invalid JSON response from AI model');
       }
 
