@@ -5,6 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { useRepository } from '../hooks/useRepository';
 import { useActivityLog } from '../hooks/useActivityLog';
 
+/**
+ * Sanitizes a repository URL by removing any embedded credentials.
+ * Returns a redacted URL safe for logging.
+ */
+function sanitizeRepoUrl(repoUrl: string): string {
+  try {
+    const url = new URL(repoUrl.replace(/^git@/, 'https://').replace(/:/, '/'));
+    // Remove username and password from URL
+    url.username = '';
+    url.password = '';
+    return url.toString().replace(/^https:\/\//, repoUrl.includes('git@') ? 'git@' : 'https://');
+  } catch {
+    // If URL parsing fails, use regex to remove userinfo
+    return repoUrl.replace(/:\/\/[^@]+@/, '://***@');
+  }
+}
+
 export function RepositoryConfig() {
   const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('main');
@@ -28,8 +45,9 @@ export function RepositoryConfig() {
     }
 
     try {
-      addLog('info', `Cloning repository: ${repoUrl} (branch: ${branch})`);
-      console.log('Starting clone...', { repoUrl, branch });
+      const sanitizedUrl = sanitizeRepoUrl(repoUrl);
+      addLog('info', `Cloning repository: ${sanitizedUrl} (branch: ${branch})`);
+      console.log('Starting clone...', { repoUrl: sanitizedUrl, branch });
       const result = await clone(repoUrl, branch);
       console.log('Clone successful:', result);
       addLog('success', result.cached ? 'Repository loaded from cache' : 'Repository cloned successfully');
@@ -64,7 +82,8 @@ export function RepositoryConfig() {
     if (!repoId) return;
 
     try {
-      addLog('info', `Syncing repository: ${repoUrl} (branch: ${branch})`);
+      const sanitizedUrl = sanitizeRepoUrl(repoUrl);
+      addLog('info', `Syncing repository: ${sanitizedUrl} (branch: ${branch})`);
       await sync(repoUrl, branch);
       addLog('success', 'Repository synced successfully');
     } catch (error) {
