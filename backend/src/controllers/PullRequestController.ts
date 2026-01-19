@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PullRequestService } from '../services/PullRequestService';
+import { DiffService } from '../services/DiffService';
 
 export class PullRequestController {
   static async getAll(req: Request, res: Response) {
@@ -62,6 +63,23 @@ export class PullRequestController {
     try {
       const comment = PullRequestService.addComment(req.body);
       res.status(201).json(comment);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
+
+  static async getDiff(req: Request, res: Response) {
+    try {
+      const { repoId, sourceBranch, targetBranch } = req.query;
+      if (!repoId || !sourceBranch || !targetBranch) {
+        return res.status(400).json({ error: 'repoId, sourceBranch, and targetBranch are required' });
+      }
+      const diffs = await DiffService.getDiff(
+        repoId as string,
+        sourceBranch as string,
+        targetBranch as string
+      );
+      res.json(diffs);
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }
