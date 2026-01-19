@@ -4,9 +4,9 @@
 
 ## Current Status
 
-**Phase**: Phase 3 Complete - Ready for Phase 4
+**Phase**: Phase 4 In Progress
 **Last Updated**: 2026-01-19
-**Last Step Completed**: Phase 3.5 - Created InlineComment component
+**Last Step Completed**: Phase 4.2 - Implemented Overview tab with description and activity timeline
 
 ---
 
@@ -32,8 +32,8 @@
 - [x] 3.5 Create InlineComment component with severity badges
 
 ### Phase 4: Merge Request Detail View
-- [ ] 4.1 Refactor MergeRequestsView to use real API data
-- [ ] 4.2 Implement Overview tab with description and timeline
+- [x] 4.1 Refactor MergeRequestsView to use real API data
+- [x] 4.2 Implement Overview tab with description and timeline
 - [ ] 4.3 Create CommitsTab component with commit list
 - [ ] 4.4 Create ChangesTab with FileTree + DiffViewer layout
 
@@ -69,6 +69,7 @@
 | `frontend/src/components/DiffViewer.tsx` | Created | Diff viewer with line numbers and colors |
 | `frontend/src/components/DiffLine.tsx` | Created | Individual diff line with comment hover/click |
 | `frontend/src/components/InlineComment.tsx` | Created | Inline comment component with severity badges |
+| `frontend/src/components/MergeRequestsView.tsx` | Modified | Refactored to use real API data with usePullRequests hook |
 
 ---
 
@@ -94,7 +95,7 @@ _Record any blockers or issues encountered._
 
 _Brief summary of what was being worked on and next steps._
 
-**Next Step**: Start with Phase 4.1 - Refactor MergeRequestsView to use real API data
+**Next Step**: Continue with Phase 4.3 - Create CommitsTab component with commit list
 
 **Important Files to Review**:
 - `plans/gitlab-clone-implementation.md` - Full implementation plan
