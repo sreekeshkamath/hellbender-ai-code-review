@@ -285,6 +285,7 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
               </button>
             );
           })}
+          </div>
           <div className="flex-1" />
           <div className="flex gap-2 mb-4 flex-shrink-0">
             <Button
@@ -466,8 +467,6 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
                 </div>
               </section>
             )}
-
-                )}
               </div>
             </div>
 
