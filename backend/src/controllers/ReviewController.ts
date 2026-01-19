@@ -71,6 +71,21 @@ export class ReviewController {
           const content = fs.readFileSync(filePath, 'utf-8');
           console.log(`[${index + 1}/${files.length}] Analyzing: ${file.path} (${content.length} chars)`);
           const analysis = await AnalysisService.analyzeCode(content, file.path, model);
+
+          // Check if analysis contains an error (fallback error object from AnalysisService)
+          if (analysis.error) {
+            console.error(`[${index + 1}/${files.length}] ✗ Analysis failed for ${file.path}: ${analysis.error}`);
+            return {
+              file: file.path,
+              error: analysis.error,
+              score: analysis.score,
+              issues: analysis.issues || [],
+              strengths: analysis.strengths || [],
+              summary: analysis.summary,
+              vulnerabilities: analysis.vulnerabilities || []
+            };
+          }
+
           console.log(`[${index + 1}/${files.length}] ✓ Complete: ${file.path}`);
 
           return {
@@ -89,15 +104,15 @@ export class ReviewController {
       // Process files in batches with concurrency limit
       for (let i = 0; i < files.length; i += CONCURRENCY_LIMIT) {
         const batch = files.slice(i, i + CONCURRENCY_LIMIT);
-        const batchPromises = batch.map((file: FileInfo, batchIndex: number) => 
+        const batchPromises = batch.map((file: FileInfo, batchIndex: number) =>
           analyzeFile(file, i + batchIndex)
         );
 
         console.log(`Processing batch ${Math.floor(i / CONCURRENCY_LIMIT) + 1} (${batch.length} files in parallel)...`);
-        
+
         // Use allSettled so one failure doesn't stop others
         const batchResults = await Promise.allSettled(batchPromises);
-        
+
         batchResults.forEach((result, batchIndex) => {
           if (result.status === 'fulfilled') {
             results.push(result.value);

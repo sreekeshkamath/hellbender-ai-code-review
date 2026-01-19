@@ -187,9 +187,19 @@ Return ONLY valid JSON, no markdown formatting.`;
         throw new Error('Invalid JSON response from AI model');
       }
 
+      // Extract security issues from analysis.issues and convert to Vulnerability format
+      const securityIssues = (analysis.issues || [])
+        .filter((issue: { type?: string }) => issue.type === 'security')
+        .map((issue: { line: number; type: string; severity: string; code: string }) => ({
+          line: issue.line,
+          type: issue.type,
+          severity: issue.severity,
+          code: issue.code
+        }));
+
       return {
         ...analysis,
-        vulnerabilities: [...vulnerabilities, ...(analysis.securityIssues || [])]
+        vulnerabilities: [...vulnerabilities, ...securityIssues]
       };
     } catch (error) {
       const errorMessage = (error as Error).message;
