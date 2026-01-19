@@ -1,6 +1,7 @@
 const OpenAI = require('openai');
 
 import * as https from 'https';
+import { VulnerabilityScanner } from './VulnerabilityScanner';
 
 export class AnalysisService {
   static async getOpenRouterModels(): Promise<any[]> {
@@ -15,7 +16,25 @@ export class AnalysisService {
         }
       };
 
+      const TIMEOUT_MS = 10000; // 10 seconds
+      const timeout = setTimeout(() => {
+        req.destroy();
+        reject(new Error('Request timeout: OpenRouter API did not respond within 10 seconds'));
+      }, TIMEOUT_MS);
+
       const req = https.request(options, (res) => {
+        clearTimeout(timeout);
+        
+        // Check HTTP status code
+        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+          let errorBody = '';
+          res.on('data', (chunk) => errorBody += chunk);
+          res.on('end', () => {
+            reject(new Error(`OpenRouter API returned status ${res.statusCode}: ${errorBody.substring(0, 200)}`));
+          });
+          return;
+        }
+
         let data = '';
         res.on('data', (chunk) => data += chunk);
         res.on('end', () => {
@@ -32,13 +51,23 @@ export class AnalysisService {
             } else {
               resolve([]);
             }
-          } catch (e) {
-            reject(new Error('Failed to parse OpenRouter models response'));
+          } catch (parseError) {
+            reject(new Error(`Failed to parse OpenRouter models response: ${parseError instanceof Error ? parseError.message : String(parseError)}. Response: ${data.substring(0, 200)}`));
           }
         });
       });
 
-      req.on('error', (e) => reject(e));
+      req.on('error', (e) => {
+        clearTimeout(timeout);
+        reject(e);
+      });
+      
+      req.setTimeout(TIMEOUT_MS, () => {
+        req.destroy();
+        clearTimeout(timeout);
+        reject(new Error('Request timeout: OpenRouter API did not respond within 10 seconds'));
+      });
+      
       req.end();
     });
   }
@@ -58,7 +87,7 @@ export class AnalysisService {
       }
     });
 
-    const vulnerabilities = require('./VulnerabilityScanner').VulnerabilityScanner.detectVulnerabilities(content);
+    const vulnerabilities = VulnerabilityScanner.detectVulnerabilities(content);
 
     const prompt = `You are an expert code reviewer. Analyze the following code and provide a detailed review:
 
@@ -129,7 +158,17 @@ Return ONLY valid JSON, no markdown formatting.`;
       const elapsed = Date.now() - startTime;
       console.log(`[ANALYSIS] AI agent response received in ${elapsed}ms for ${filePath}`);
 
-      const responseText = completion.choices[0].message.content;
+      // Defensive guard: ensure completion and content exist
+      if (!completion || !completion.choices || !completion.choices[0] || !completion.choices[0].message) {
+        throw new Error('Invalid response structure from AI model: missing completion data');
+      }
+      
+      const content = completion.choices[0].message.content;
+      if (!content || typeof content !== 'string') {
+        throw new Error('Invalid response structure from AI model: missing or invalid content');
+      }
+      
+      const responseText = content;
       let analysis;
       
       try {
