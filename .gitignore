@@ -10,4 +10,3 @@ backend/dist/
 backend/node_modules/
 .DS_Store
 *.log
-
