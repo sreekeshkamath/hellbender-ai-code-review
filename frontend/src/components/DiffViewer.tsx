@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { FileDiff, DiffHunk, DiffLine, Comment } from '../types/api.types';
 import { DiffLine as DiffLineComponent } from './DiffLine';
 import { InlineComment } from './InlineComment';
+import { Skeleton } from './ui/skeleton';
 import { cn } from '../lib/utils';
 
 interface DiffViewerProps {
@@ -27,6 +28,8 @@ export function DiffViewer({
 }: DiffViewerProps) {
   const [expandedHunks, setExpandedHunks] = useState<Set<number>>(new Set());
   const [contextLines, setContextLines] = useState(3);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const selectedLineRef = useRef<HTMLDivElement>(null);
 
   // Group comments by line number
   const commentsByLine = useMemo(() => {
@@ -71,6 +74,16 @@ export function DiffViewer({
     });
   };
 
+  // Scroll to selected line when it changes
+  useEffect(() => {
+    if (selectedLine && selectedLineRef.current && scrollContainerRef.current) {
+      selectedLineRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [selectedLine]);
+
   if (!fileDiff) {
     return (
       <div className="flex-1 bg-zinc-900/50 flex items-center justify-center">
@@ -101,7 +114,10 @@ export function DiffViewer({
       </div>
 
       {/* Diff Content */}
-      <div className="flex-1 overflow-y-auto no-scrollbar">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto no-scrollbar"
+      >
         <div className="font-mono text-[11px] leading-relaxed">
           {fileDiff.hunks.map((hunk, hunkIndex) => {
             const isExpanded = expandedHunks.has(hunkIndex);
@@ -138,7 +154,10 @@ export function DiffViewer({
                     const isSelected = selectedLine === lineNumber;
 
                     return (
-                      <div key={lineIndex}>
+                      <div
+                        key={lineIndex}
+                        ref={isSelected ? selectedLineRef : null}
+                      >
                         <DiffLineComponent
                           line={line}
                           hunk={hunk}

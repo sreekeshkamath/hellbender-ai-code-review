@@ -10,15 +10,21 @@ import {
   MessageSquare,
   ExternalLink,
   Bot,
-  Activity
+  Activity,
+  Sparkles,
+  RefreshCw,
+  Menu,
+  X
 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { usePullRequests } from '../hooks/usePullRequests';
+import { useModels } from '../hooks/useModels';
 import { PullRequest, Comment } from '../types/api.types';
 import { PullRequestService } from '../services/PullRequestService';
 import { CommitsTab } from './CommitsTab';
 import { ChangesTab } from './ChangesTab';
+import { cn } from '../lib/utils';
 
 type Tab = 'Overview' | 'Commits' | 'Pipelines' | 'Changes';
 
@@ -77,7 +83,10 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isAIReviewing, setIsAIReviewing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { pullRequests, selectedPR, isLoading, error, fetchPRs, selectPR } = usePullRequests(repoId);
+  const { selectedModel } = useModels();
 
   // Fetch PRs on mount
   useEffect(() => {
@@ -97,19 +106,47 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
   }, [prId, pullRequests, selectedPR, selectPR]);
 
   // Fetch comments when PR is selected
-  useEffect(() => {
+  const fetchComments = async () => {
     if (selectedPR) {
       setIsLoadingComments(true);
       const service = new PullRequestService();
-      service.getComments(selectedPR.id)
-        .then(setComments)
-        .catch(err => {
-          console.error('Failed to fetch comments:', err);
-          setComments([]);
-        })
-        .finally(() => setIsLoadingComments(false));
+      try {
+        const prComments = await service.getComments(selectedPR.id);
+        setComments(prComments);
+      } catch (err) {
+        console.error('Failed to fetch comments:', err);
+        setComments([]);
+      } finally {
+        setIsLoadingComments(false);
+      }
     }
+  };
+
+  useEffect(() => {
+    fetchComments();
   }, [selectedPR]);
+
+  // Handle AI Review
+  const handleAIReview = async () => {
+    if (!selectedPR || !selectedModel) {
+      return;
+    }
+
+    setIsAIReviewing(true);
+    try {
+      const service = new PullRequestService();
+      const result = await service.requestAIReview(selectedPR.id, selectedModel);
+      console.log(`AI Review completed: ${result.commentsCreated} comments created from ${result.filesAnalyzed} files`);
+
+      // Refresh comments to show new AI comments
+      await fetchComments();
+    } catch (error) {
+      console.error('AI Review failed:', error);
+      alert(`AI Review failed: ${(error as Error).message}`);
+    } finally {
+      setIsAIReviewing(false);
+    }
+  };
 
   const currentPR = selectedPR;
 
@@ -220,8 +257,9 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
         </div>
 
         {/* TAB NAVIGATION */}
-        <div className="flex items-center gap-6 mt-8">
-          {(['Overview', 'Commits', 'Pipelines', 'Changes'] as Tab[]).map((tab) => {
+        <div className="flex items-center gap-6 mt-8 flex-wrap">
+          <div className="flex items-center gap-6 flex-1 min-w-0 overflow-x-auto">
+            {(['Overview', 'Commits', 'Pipelines', 'Changes'] as Tab[]).map((tab) => {
             let count = 0;
             if (tab === 'Overview') count = comments.length;
             if (tab === 'Commits') count = 0; // Will be fetched later
@@ -248,15 +286,37 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
             );
           })}
           <div className="flex-1" />
-          <div className="flex gap-2 mb-4">
-            <Button variant="outline" size="sm" className="h-8 border-zinc-800 text-[9px] font-black uppercase tracking-widest hover:bg-zinc-900">
+          <div className="flex gap-2 mb-4 flex-shrink-0">
+            <Button
+              onClick={handleAIReview}
+              disabled={isAIReviewing || !selectedModel || currentPR.status !== 'open'}
+              className="h-8 bg-primary text-black text-[9px] font-black uppercase tracking-widest hover:bg-primary/90 disabled:opacity-20 flex items-center gap-2"
+            >
+              {isAIReviewing ? (
+                <>
+                  <RefreshCw size={12} className="animate-spin" />
+                  <span className="hidden sm:inline">Reviewing...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={12} />
+                  <span className="hidden sm:inline">AI Review</span>
+                </>
+              )}
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 border-zinc-800 text-[9px] font-black uppercase tracking-widest hover:bg-zinc-900 hidden sm:flex">
               Add a to-do item
             </Button>
-            <Button className="h-8 bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest hover:bg-primary/90">
-              Your review
-            </Button>
-            <Button className="h-8 bg-white text-black text-[9px] font-black uppercase tracking-widest hover:bg-zinc-200">
+            <Button className="h-8 bg-white text-black text-[9px] font-black uppercase tracking-widest hover:bg-zinc-200 hidden sm:flex">
               New Merge Request
+            </Button>
+            <Button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              variant="outline"
+              size="sm"
+              className="h-8 border-zinc-800 text-[9px] font-black uppercase tracking-widest hover:bg-zinc-900 lg:hidden"
+            >
+              <Menu size={14} />
             </Button>
           </div>
         </div>
@@ -412,7 +472,22 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
             </div>
 
             {/* RIGHT SIDEBAR */}
-            <aside className="w-72 border-l border-zinc-800 bg-zinc-950/20 p-6 overflow-y-auto no-scrollbar">
+            <aside
+              className={cn(
+                'w-72 border-l border-zinc-800 bg-zinc-950/20 p-6 overflow-y-auto no-scrollbar',
+                'transition-transform duration-300 ease-in-out',
+                'lg:translate-x-0 lg:static lg:z-auto',
+                'fixed top-0 right-0 h-full z-50',
+                isSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+              )}
+            >
+              {/* Mobile close button */}
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="lg:hidden absolute top-4 right-4 p-2 text-zinc-600 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
           <div className="space-y-2">
             <MetadataRow label="Assignee" value={currentPR.author} icon={Users} onEdit={() => {}} />
             <MetadataRow label="Reviewer" value="None" icon={Users} onEdit={() => {}} />

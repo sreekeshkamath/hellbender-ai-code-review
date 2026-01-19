@@ -1,6 +1,7 @@
 import React from 'react';
 import { GitPullRequest, GitBranch, Clock, User } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { Skeleton } from './ui/skeleton';
 import { PullRequest } from '../types/api.types';
 import { cn } from '../lib/utils';
 
@@ -71,14 +72,33 @@ export function MergeRequestsList({
         <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600 mb-4">
           Merge Requests
         </h2>
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="p-4 border border-zinc-800 bg-zinc-950/20 rounded-lg animate-pulse"
+              className="p-4 border border-zinc-800 bg-zinc-950/20 rounded-lg"
             >
-              <div className="h-4 bg-zinc-800 rounded w-3/4 mb-2" />
-              <div className="h-3 bg-zinc-800 rounded w-1/2" />
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-16 rounded-sm" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <Skeleton className="h-3 w-28" />
+              </div>
             </div>
           ))}
         </div>
