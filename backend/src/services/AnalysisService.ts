@@ -24,7 +24,7 @@ export class AnalysisService {
 
       const req = https.request(options, (res) => {
         clearTimeout(timeout);
-        
+
         // Check HTTP status code
         if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
           let errorBody = '';
@@ -61,13 +61,13 @@ export class AnalysisService {
         clearTimeout(timeout);
         reject(e);
       });
-      
+
       req.setTimeout(TIMEOUT_MS, () => {
         req.destroy();
         clearTimeout(timeout);
         reject(new Error('Request timeout: OpenRouter API did not respond within 10 seconds'));
       });
-      
+
       req.end();
     });
   }
@@ -122,23 +122,23 @@ Focus on:
 Return ONLY valid JSON, no markdown formatting.`;
 
     try {
-      const codePreview = content.length > 500 
-        ? content.substring(0, 500) + '...' 
+      const codePreview = content.length > 500
+        ? content.substring(0, 500) + '...'
         : content;
       const lineCount = content.split('\n').length;
-      
+
       console.log(`[ANALYSIS] Sending code to AI agent:`);
       console.log(`  File: ${filePath}`);
       console.log(`  Model: ${model}`);
       console.log(`  Size: ${content.length} chars, ${lineCount} lines`);
       console.log(`  Code preview (first 500 chars):`);
       console.log(`  ${'─'.repeat(60)}`);
-      console.log(codePreview.split('\n').slice(0, 10).map(line => `  ${line}`).join('\n'));
+      console.log(codePreview.split('\n').slice(0, 10).map((line: string) => `  ${line}`).join('\n'));
       if (lineCount > 10) console.log(`  ... (${lineCount - 10} more lines)`);
       console.log(`  ${'─'.repeat(60)}`);
-      
+
       const startTime = Date.now();
-      
+
       const completion = await openai.chat.completions.create({
         model: model,
         messages: [
@@ -162,25 +162,25 @@ Return ONLY valid JSON, no markdown formatting.`;
       if (!completion || !completion.choices || !completion.choices[0] || !completion.choices[0].message) {
         throw new Error('Invalid response structure from AI model: missing completion data');
       }
-      
-      const content = completion.choices[0].message.content;
-      if (!content || typeof content !== 'string') {
+
+      const responseContent = completion.choices[0].message.content;
+      if (!responseContent || typeof responseContent !== 'string') {
         throw new Error('Invalid response structure from AI model: missing or invalid content');
       }
-      
-      const responseText = content;
+
+      const responseText = responseContent;
       let analysis;
-      
+
       try {
         // More robust JSON extraction: find the first '{' and last '}'
         let cleanResponse = responseText.trim();
         const firstBrace = cleanResponse.indexOf('{');
         const lastBrace = cleanResponse.lastIndexOf('}');
-        
+
         if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
           cleanResponse = cleanResponse.substring(firstBrace, lastBrace + 1);
         }
-        
+
         analysis = JSON.parse(cleanResponse);
       } catch (parseError) {
         console.error('Failed to parse JSON response:', responseText);
