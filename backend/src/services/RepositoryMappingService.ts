@@ -12,6 +12,21 @@ export class RepositoryMappingService {
     return `${normalizedUrl}:${branch}`;
   }
 
+  /**
+   * Parses a mapping key back into repoUrl and branch.
+   * Handles URLs with colons (e.g., https://, git@host:path) by splitting on the last colon.
+   */
+  static parseKey(key: string): { repoUrl: string; branch: string } | null {
+    const lastColonIndex = key.lastIndexOf(':');
+    if (lastColonIndex === -1) {
+      return null;
+    }
+    return {
+      repoUrl: key.substring(0, lastColonIndex),
+      branch: key.substring(lastColonIndex + 1)
+    };
+  }
+
   private static loadMappings(): Record<string, string> {
     try {
       if (!fs.existsSync(MAPPINGS_FILE)) {
@@ -30,6 +45,7 @@ export class RepositoryMappingService {
       fs.writeFileSync(MAPPINGS_FILE, JSON.stringify(mappings, null, 2));
     } catch (error) {
       console.error('Error saving repo mappings:', error);
+      throw error; // Propagate the error so callers can react
     }
   }
 

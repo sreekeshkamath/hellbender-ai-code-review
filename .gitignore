@@ -3,7 +3,10 @@ node_modules/
 temp/
 data/repo-mappings.json
 data/repos.json.enc
-client/dist/
-client/node_modules/
+frontend/dist/
+frontend/node_modules/
+backend/dist/
+backend/node_modules/
 .DS_Store
 *.log
+

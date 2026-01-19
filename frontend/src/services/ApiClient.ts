@@ -3,7 +3,7 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 export class ApiClient {
   private client: AxiosInstance;
 
-  constructor(baseURL: string = 'http://localhost:3001') {
+  constructor(baseURL: string = import.meta.env.VITE_API_URL || 'http://localhost:3001') {
     this.client = axios.create({
       baseURL,
       timeout: 30000,

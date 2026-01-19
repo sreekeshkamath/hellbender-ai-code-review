@@ -83,7 +83,17 @@ Return ONLY valid JSON, no markdown formatting.`;
       temperature: 0.3
     });
 
-    const responseText = completion.choices[0].message.content;
+    // Defensive guard: ensure completion and content exist
+    if (!completion || !completion.choices || !completion.choices[0] || !completion.choices[0].message) {
+      throw new Error('Invalid response structure from AI model: missing completion data');
+    }
+    
+    const content = completion.choices[0].message.content;
+    if (!content || typeof content !== 'string') {
+      throw new Error('Invalid response structure from AI model: missing or invalid content');
+    }
+    
+    const responseText = content;
     let analysis;
     
     try {
@@ -98,7 +108,14 @@ Return ONLY valid JSON, no markdown formatting.`;
       
       analysis = JSON.parse(cleanResponse);
     } catch (parseError) {
-      console.error('Failed to parse JSON response:', responseText);
+      // Sanitize error logging: don't log full response
+      const responseLength = responseText.length;
+      const preview = responseText.substring(0, 100).replace(/[\r\n]/g, ' ');
+      console.error('Failed to parse JSON response:', {
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        responseLength,
+        preview: preview + (responseLength > 100 ? '...' : '')
+      });
       throw new Error('Invalid JSON response from AI model');
     }
 

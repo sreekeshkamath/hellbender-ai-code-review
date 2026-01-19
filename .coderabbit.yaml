@@ -1,0 +1,50 @@
+# CodeRabbit Configuration
+# This file configures CodeRabbit AI code review settings
+
+# Enable reviews on all branches, not just the default branch
+reviews:
+  # Show review status in PRs
+  review_status: true
+  
+  # Enable reviews on non-default branches (this is the key setting)
+  enable_reviews_on_non_default_branches: true
+
+# Paths configuration
+paths:
+  # Paths to include in reviews
+  include:
+    - "backend/src/**"
+    - "frontend/src/**"
+  
+  # Paths to exclude from reviews
+  exclude:
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+    - "**/coverage/**"
+    - "**/*.min.js"
+    - "**/*.bundle.js"
+
+# Language-specific settings
+language:
+  typescript:
+    enabled: true
+  javascript:
+    enabled: true
+
+# Review settings
+review:
+  # Request changes threshold (0-100)
+  request_changes_workflow: 75
+  
+  # Enable inline comments
+  inline: true
+  
+  # Enable code suggestions
+  suggestions: true
+
+# Chat settings
+chat:
+  # Enable chat functionality
+  enabled: true
