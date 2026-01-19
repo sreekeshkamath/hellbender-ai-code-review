@@ -1,10 +1,8 @@
 # GitLab Clone Implementation Plan
 
-> **Status**: Not Started  
-> **Created**: 2026-01-19  
-> **Progress Tracker**: [gitlab-clone-progress.md](./gitlab-clone-progress.md)
+> **For Agent Continuity**: Read `gitlab-clone-progress.md` at the start of each session to resume work.
 
-Transform the Hellbender AI Code Review platform into a GitLab-like merge request interface with diff views and inline AI comments, following the DESIGN.md specifications exactly.
+Transform Hellbender into a GitLab-like merge request interface with code diff views, inline AI comments, and proper tab navigation. All styling follows [`DESIGN.md`](../DESIGN.md) exactly.
 
 ---
 

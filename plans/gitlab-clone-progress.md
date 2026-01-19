@@ -1,27 +1,16 @@
 # GitLab Clone Implementation Progress
 
-> **Last Updated**: 2026-01-19  
-> **Current Phase**: Not Started  
-> **Implementation Plan**: [gitlab-clone-implementation.md](./gitlab-clone-implementation.md)
+> **Agent Instructions**: Read this file at the start of each session. Update after completing each step.
+
+## Current Status
+
+**Phase**: Not Started  
+**Last Updated**: 2026-01-19  
+**Last Step Completed**: None
 
 ---
 
-## Instructions for Agents
-
-**Before starting work:**
-1. Read this file to understand current progress
-2. Read [DESIGN.md](../DESIGN.md) for styling guidelines
-3. Check the "Current Step" section below
-
-**After completing a step:**
-1. Check off the completed item below
-2. Update "Current Step" section
-3. Add any notes to "Session Notes"
-4. List files modified in "Files Modified This Session"
-
----
-
-## Progress Checklist
+## Task Checklist
 
 ### Phase 1: Backend Foundation
 - [ ] 1.1 Create PullRequestService.ts in backend with CRUD operations
@@ -60,61 +49,45 @@
 
 ---
 
-## Current Step
+## Files Created/Modified
 
-**Step**: Not started  
-**Status**: Ready to begin Phase 1  
-**Notes**: Start with step 1.1 - Create PullRequestService.ts
-
----
-
-## Session Notes
-
-### Session 1 (2026-01-19)
-- Created implementation plan
-- Created progress tracking file
-- Ready to begin implementation
-
----
-
-## Files Modified This Session
-
-_No files modified yet_
+| File | Status | Notes |
+|------|--------|-------|
+| - | - | No files modified yet |
 
 ---
 
 ## Key Decisions Made
 
-_No decisions yet_
+_Record important architectural or design decisions here._
+
+1. None yet
 
 ---
 
 ## Blockers / Issues
 
-_None currently_
+_Record any blockers or issues encountered._
+
+1. None yet
 
 ---
 
-## Design System Quick Reference
+## Context for Next Session
 
-From [DESIGN.md](../DESIGN.md):
+_Brief summary of what was being worked on and next steps._
 
-**Typography:**
-- Section Header: `text-[10px] font-black uppercase tracking-[0.3em]`
-- Small Label: `text-[10px] font-black uppercase tracking-widest`
-- Body Mono: `text-[11px] font-mono leading-relaxed`
+**Next Step**: Start with Phase 1.1 - Create PullRequestService.ts
 
-**Colors:**
-- Background: `bg-zinc-950/20` or `bg-black`
-- Borders: `border-zinc-800` or `border-zinc-900`
-- Primary accent: `text-primary` (bright blue)
+**Important Files to Review**:
+- `plans/gitlab-clone-implementation.md` - Full implementation plan
+- `DESIGN.md` - Design system tokens (must follow exactly)
+- `backend/src/models/PullRequest.ts` - Existing PR model
+- `backend/src/models/Comment.ts` - Existing Comment model
+- `backend/data/pull-requests.json` - Existing PR data
 
-**Severity Colors:**
-- Critical: `bg-red-500`
-- High: `bg-orange-500`
-- Medium: `bg-yellow-500`
-- Low: `bg-blue-500`
-
-**Buttons:**
-- Primary: `bg-white text-black font-black uppercase tracking-[0.2em]`
-- Secondary: `border border-zinc-800 bg-transparent text-zinc-500 hover:border-white hover:text-white`
+**Commands to Start**:
+```bash
+cd hellbender-ai-code-review
+# Backend is in ./backend, Frontend is in ./frontend
+```
