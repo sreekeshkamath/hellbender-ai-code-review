@@ -45,6 +45,7 @@ export class RepositoryMappingService {
       fs.writeFileSync(MAPPINGS_FILE, JSON.stringify(mappings, null, 2));
     } catch (error) {
       console.error('Error saving repo mappings:', error);
+      throw error; // Propagate the error so callers can react
     }
   }
 
