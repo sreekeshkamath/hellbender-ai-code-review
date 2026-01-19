@@ -1,6 +1,6 @@
 # Agents
 
-This document describes the available agents that can be used with opencode.
+This document describes the available agents that can be used with Hellbender.
 
 ## General Agent
 
@@ -16,11 +16,26 @@ A general-purpose agent for researching complex questions and executing multi-st
 - Shell command execution
 
 ### Usage
+
+**Note**: The agent architecture described here is a planned enhancement. Currently, Hellbender uses a direct API approach. See the actual API documentation below.
+
+**Planned API** (TODO - not yet implemented):
 ```json
 {
   "subagent_type": "general",
   "description": "Short description of the task",
   "prompt": "Detailed instructions for the agent"
+}
+```
+
+**Current API** (`POST /api/review/analyze`):
+```json
+{
+  "repoId": "uuid-string",
+  "model": "anthropic/claude-3.5-sonnet",
+  "files": [
+    { "path": "src/index.js", "size": 1024 }
+  ]
 }
 ```
 
@@ -43,6 +58,10 @@ Fast agent specialized for exploring codebases.
 - **very thorough:** Comprehensive analysis across multiple naming conventions
 
 ### Usage
+
+**Note**: The agent architecture described here is a planned enhancement. Currently, Hellbender uses a direct API approach.
+
+**Planned API** (TODO - not yet implemented):
 ```json
 {
   "subagent_type": "explore",
@@ -52,9 +71,70 @@ Fast agent specialized for exploring codebases.
 }
 ```
 
-## Custom Agents
+**Current API** (`POST /api/review/analyze`):
+```json
+{
+  "repoId": "uuid-string",
+  "model": "anthropic/claude-3.5-sonnet",
+  "files": [
+    { "path": "src/components/App.tsx", "size": 2048 },
+    { "path": "src/components/Header.tsx", "size": 512 }
+  ]
+}
+```
 
-To add custom agents:
+## Current API Implementation
+
+Hellbender currently uses a direct review API endpoint. The agent architecture described above is a planned enhancement.
+
+### POST /api/review/analyze
+
+Analyzes selected files from a cloned repository.
+
+**Request Schema:**
+- `repoId` (string, required): UUID of the cloned repository
+- `model` (string, required): OpenRouter model identifier (e.g., "anthropic/claude-3.5-sonnet")
+- `files` (array, required): Array of file objects with:
+  - `path` (string, required): Relative path to the file within the repository
+  - `size` (number, optional): File size in bytes
+
+**Example Request:**
+```json
+{
+  "repoId": "49af0684-57d2-4ed7-b415-13ea6fc4e017",
+  "model": "anthropic/claude-3.5-sonnet",
+  "files": [
+    { "path": "src/index.js", "size": 1024 },
+    { "path": "src/utils/helpers.ts", "size": 2048 }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "file": "src/index.js",
+      "score": 85,
+      "issues": [...],
+      "vulnerabilities": [...],
+      "strengths": [...],
+      "summary": "..."
+    }
+  ],
+  "summary": {
+    "overallScore": 85,
+    "totalFiles": 2,
+    "vulnerabilityCount": 0,
+    "reviewedAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+## Custom Agents (Planned)
+
+To add custom agents (future enhancement):
 
 1. Define the agent type and description in your configuration
 2. Implement the agent's capabilities
@@ -64,4 +144,4 @@ To add custom agents:
 
 Agents return results in their final message. Results are not automatically shown to the user - you should summarize them in a text response.
 
-Agents are stateless between calls unless you provide a `session_id` parameter.
+Agents are stateless between calls.
