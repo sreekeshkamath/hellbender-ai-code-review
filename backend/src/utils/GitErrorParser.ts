@@ -45,7 +45,6 @@ export class GitErrorParser {
     ],
     AUTHENTICATION_FAILED: [
       /authentication\s+failed/i,
-      /permission\s+denied/i,
       /unauthorized/i,
       /invalid\s+credentials/i,
       /fatal:\s+authentication\s+failed/i,
