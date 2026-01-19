@@ -66,7 +66,7 @@ This will start:
 
 Backend only:
 ```bash
-npm run dev
+npm run dev --prefix backend
 ```
 
 Frontend only:
