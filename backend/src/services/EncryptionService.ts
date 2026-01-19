@@ -1,9 +1,9 @@
 import * as crypto from 'crypto';
-import { ENCRYPTION_KEY, IV_LENGTH, ALGORITHM } from '../config/constants';
+import { getEncryptionKey, IV_LENGTH, ALGORITHM } from '../config/constants';
 
 export class EncryptionService {
   private static getKey(): Buffer {
-    return Buffer.from(ENCRYPTION_KEY.padEnd(32).slice(0, 32));
+    return Buffer.from(getEncryptionKey().padEnd(32).slice(0, 32));
   }
 
   static encrypt(text: string): string {
@@ -15,13 +15,17 @@ export class EncryptionService {
   }
 
   static decrypt(encryptedText: string): string | null {
-    const parts = encryptedText.split(':');
-    if (parts.length !== 2) return null;
-    const iv = Buffer.from(parts[0], 'hex');
-    const encryptedData = parts[1];
-    const decipher = crypto.createDecipheriv(ALGORITHM, this.getKey(), iv);
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    try {
+      const parts = encryptedText.split(':');
+      if (parts.length !== 2) return null;
+      const iv = Buffer.from(parts[0], 'hex');
+      const encryptedData = parts[1];
+      const decipher = crypto.createDecipheriv(ALGORITHM, this.getKey(), iv);
+      let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    } catch (error) {
+      return null;
+    }
   }
 }
