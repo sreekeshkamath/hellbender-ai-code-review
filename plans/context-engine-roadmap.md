@@ -167,6 +167,8 @@ CREATE TABLE IF NOT EXISTS review_memory (
 );
 ```
 
+**Important**: This `schema.sql` file must be copied to `dist/db/schema.sql` during the build process. The build script (see Step 1.7) handles this automatically. The `getDb()` function uses a multi-strategy path resolution to locate this file at runtime, ensuring it works in both development (ts-node) and production (compiled) environments.
+
 ---
 
 ## TASK 1: Bootstrap Context Engine Service
@@ -236,6 +238,43 @@ import { config } from '../config/environment';
 
 let db: Database.Database | null = null;
 
+/**
+ * Resolves schema.sql path using a stable strategy that works in both dev and production.
+ * Strategy:
+ * 1. Try relative to __dirname (works if schema.sql is copied to dist/db/ during build)
+ * 2. Fall back to resolving from project root (works in dev with ts-node)
+ * 3. Fall back to resolving from src/db/ (source location)
+ */
+function resolveSchemaPath(): string {
+  // Strategy 1: Try relative to compiled output (dist/db/schema.sql)
+  const distPath = path.join(__dirname, 'schema.sql');
+  if (fs.existsSync(distPath)) {
+    return distPath;
+  }
+
+  // Strategy 2: Resolve from project root (context-engine/schema.sql or context-engine/src/db/schema.sql)
+  // __dirname in compiled code will be context-engine/dist/db/, so go up to project root
+  const projectRoot = path.resolve(__dirname, '..', '..');
+  const rootSchemaPath = path.join(projectRoot, 'src', 'db', 'schema.sql');
+  if (fs.existsSync(rootSchemaPath)) {
+    return rootSchemaPath;
+  }
+
+  // Strategy 3: Try direct src/db path (for ts-node dev mode)
+  const srcPath = path.resolve(__dirname, '..', 'db', 'schema.sql');
+  if (fs.existsSync(srcPath)) {
+    return srcPath;
+  }
+
+  throw new Error(
+    `schema.sql not found. Tried:\n` +
+    `  - ${distPath}\n` +
+    `  - ${rootSchemaPath}\n` +
+    `  - ${srcPath}\n` +
+    `Ensure schema.sql exists in src/db/ and is copied to dist/db/ during build.`
+  );
+}
+
 export function getDb(): Database.Database {
   if (!db) {
     // Ensure data directory exists
@@ -243,13 +282,13 @@ export function getDb(): Database.Database {
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
-    
+
     db = new Database(config.dbPath);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
-    
+
     // Initialize schema
-    const schemaPath = path.join(__dirname, 'schema.sql');
+    const schemaPath = resolveSchemaPath();
     const schema = fs.readFileSync(schemaPath, 'utf-8');
     db.exec(schema);
   }
@@ -380,11 +419,19 @@ export default app;
 {
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
-    "build": "tsc",
+    "build": "tsc && npm run copy-schema",
+    "copy-schema": "node -e \"require('fs').mkdirSync('dist/db', {recursive:true}); require('fs').copyFileSync('src/db/schema.sql', 'dist/db/schema.sql')\"",
     "start": "node dist/server.js"
   }
 }
 ```
+
+**Schema Resolution Strategy**: The `getDb()` function uses `resolveSchemaPath()` which implements a multi-strategy approach:
+1. **Primary**: Tries `path.join(__dirname, 'schema.sql')` - works when `schema.sql` is copied to `dist/db/` during build
+2. **Fallback 1**: Resolves from project root (`src/db/schema.sql`) - works in dev mode with ts-node
+3. **Fallback 2**: Resolves from source directory - additional safety net
+
+The `copy-schema` script (cross-platform Node.js) ensures `schema.sql` is copied to `dist/db/` during build, making the primary strategy work in production. This approach ensures `fs.readFileSync(schemaPath)` always finds the file at runtime, whether running in development (ts-node) or production (compiled JavaScript).
 
 ### Acceptance Test for Task 1
 
@@ -768,7 +815,7 @@ function walkDir(dir: string, baseDir: string): FileInfo[] {
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
-    
+
     // Skip common non-code directories
     if (entry.isDirectory()) {
       if (['node_modules', '.git', 'dist', 'build', '.next', 'coverage'].includes(entry.name)) {
@@ -1096,13 +1143,13 @@ export async function generateEmbeddingsForRepo(repoId: string): Promise<{ gener
   // Process in batches
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
     const batch = chunks.slice(i, i + BATCH_SIZE);
-    
+
     for (const chunk of batch) {
       try {
         // Truncate very long code to avoid token limits
         const text = chunk.code.length > 8000 ? chunk.code.slice(0, 8000) : chunk.code;
         const embedding = await getEmbedding(text);
-        
+
         insert.run(
           chunk.chunk_id,
           repoId,
@@ -1130,17 +1177,17 @@ export async function generateEmbeddingsForRepo(repoId: string): Promise<{ gener
  */
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
-  
+
   let dotProduct = 0;
   let normA = 0;
   let normB = 0;
-  
+
   for (let i = 0; i < a.length; i++) {
     dotProduct += a[i] * b[i];
     normA += a[i] * a[i];
     normB += b[i] * b[i];
   }
-  
+
   const denominator = Math.sqrt(normA) * Math.sqrt(normB);
   return denominator === 0 ? 0 : dotProduct / denominator;
 }
@@ -1154,10 +1201,10 @@ export async function searchSimilarChunks(
   topK: number = 10
 ): Promise<Array<{ chunkId: string; file: string; code: string; score: number }>> {
   const db = getDb();
-  
+
   // Get query embedding
   const queryEmbedding = await getEmbedding(query);
-  
+
   // Get all embeddings for this repo
   const rows = db.prepare(`
     SELECT e.chunk_id, e.vector_json, c.file, c.code
@@ -1170,7 +1217,7 @@ export async function searchSimilarChunks(
     file: string;
     code: string;
   }>;
-  
+
   // Compute similarities
   const scored = rows.map(row => {
     const embedding = JSON.parse(row.vector_json) as number[];
@@ -1182,7 +1229,7 @@ export async function searchSimilarChunks(
       score,
     };
   });
-  
+
   // Sort by score descending and take top K
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, topK);
@@ -1272,7 +1319,7 @@ export async function retrieveContext(request: RetrievalRequest): Promise<Ranked
       LEFT JOIN symbols s ON c.symbol_id = s.id
       WHERE c.chunk_id = ?
     `).get(result.chunkId) as any;
-    
+
     if (chunkData) {
       addScore({
         chunkId: chunkData.chunk_id,
@@ -1297,7 +1344,7 @@ export async function retrieveContext(request: RetrievalRequest): Promise<Ranked
       JOIN chunks c ON c.symbol_id = s.id
       WHERE s.repo_id = ? AND s.name LIKE ?
     `).all(repoId, `%${keyword}%`) as any[];
-    
+
     for (const match of matchingSymbols) {
       addScore({
         chunkId: match.chunk_id,
@@ -1321,7 +1368,7 @@ export async function retrieveContext(request: RetrievalRequest): Promise<Ranked
       LEFT JOIN symbols s ON c.symbol_id = s.id
       WHERE c.repo_id = ? AND c.file = ?
     `).all(repoId, selectedFile) as any[];
-    
+
     for (const chunk of fileChunks) {
       addScore({
         chunkId: chunk.chunk_id,
@@ -1342,7 +1389,7 @@ export async function retrieveContext(request: RetrievalRequest): Promise<Ranked
   const sortedByScore = Array.from(chunkScores.values())
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
-  
+
   for (const item of sortedByScore) {
     topFiles.add(item.chunk.file);
   }
@@ -1352,14 +1399,14 @@ export async function retrieveContext(request: RetrievalRequest): Promise<Ranked
     const imports = db.prepare(`
       SELECT imported_file FROM dependencies WHERE repo_id = ? AND file = ?
     `).all(repoId, file) as Array<{ imported_file: string }>;
-    
+
     // Get files that import this file
     const importers = db.prepare(`
       SELECT file FROM dependencies WHERE repo_id = ? AND imported_file LIKE ?
     `).all(repoId, `%${file.split('/').pop()}%`) as Array<{ file: string }>;
-    
+
     const relatedFiles = [...imports.map(i => i.imported_file), ...importers.map(i => i.file)];
-    
+
     for (const relatedFile of relatedFiles) {
       const relatedChunks = db.prepare(`
         SELECT c.chunk_id, c.file, c.type, c.start_line, c.end_line, c.code, s.name as symbol
@@ -1368,7 +1415,7 @@ export async function retrieveContext(request: RetrievalRequest): Promise<Ranked
         WHERE c.repo_id = ? AND c.file LIKE ?
         LIMIT 3
       `).all(repoId, `%${relatedFile.replace(/^\.\.?\/?/, '')}%`) as any[];
-      
+
       for (const chunk of relatedChunks) {
         addScore({
           chunkId: chunk.chunk_id,
@@ -1531,7 +1578,7 @@ export function packContext(
     }
 
     const chunkTokens = estimateTokens(chunk.code);
-    
+
     // Check budget
     if (totalTokens + chunkTokens > tokenBudget) {
       chunksDropped++;
@@ -1678,7 +1725,7 @@ router.post('/review', async (req: Request, res: Response) => {
 
     // Run multi-pass review
     const passResults: Record<string, any> = {};
-    
+
     for (const pass of REVIEW_PASSES) {
       try {
         const result = await runReviewPass(pass, formattedContext, diff, files, model);
@@ -1771,7 +1818,7 @@ Return ONLY valid JSON.`;
 
   const data = await response.json();
   const content = data.choices[0]?.message?.content;
-  
+
   if (!content) {
     throw new Error('Empty response from LLM');
   }
@@ -1854,7 +1901,7 @@ export class ContextEngineClient {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repoId, branch, headSha }),
       });
-      
+
       if (!response.ok) {
         console.error('[ContextEngineClient] Index failed:', await response.text());
       } else {
@@ -1916,7 +1963,7 @@ import { ContextEngineClient } from '../services/ContextEngineClient';
 
 // In clone() method, after const result = await RepositoryService.cloneWithDefaults(...)
 // Add fire-and-forget indexing:
-ContextEngineClient.indexRepo(result.repoId).catch(err => 
+ContextEngineClient.indexRepo(result.repoId).catch(err =>
   console.error('Background indexing failed:', err)
 );
 ```
