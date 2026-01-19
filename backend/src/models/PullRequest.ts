@@ -10,4 +10,8 @@ export interface PullRequest {
   sourceBranch: string;
   targetBranch: string;
   filesChanged: string[];
+  // Clone tracking fields
+  originalPrId?: string; // Reference to the original PR (for clones)
+  clonedPrIds?: string[]; // Array of cloned PR IDs (for originals)
+  isCloned: boolean; // Quick check flag
 }

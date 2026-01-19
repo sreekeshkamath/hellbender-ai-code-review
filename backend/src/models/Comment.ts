@@ -8,4 +8,5 @@ export interface Comment {
   line?: number;
   type: 'user' | 'ai';
   severity?: 'low' | 'medium' | 'high' | 'critical';
+  originalCommentId?: string; // Reference to original comment for sync tracking
 }
