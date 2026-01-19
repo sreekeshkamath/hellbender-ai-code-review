@@ -38,4 +38,11 @@ export class PullRequestService extends ApiClient {
     const params = { repoId, sourceBranch, targetBranch };
     return this.get<Commit[]>('/api/pull-requests/commits', params);
   }
+
+  async requestAIReview(prId: string, model: string): Promise<{ message: string; commentsCreated: number; filesAnalyzed: number }> {
+    return this.post<{ message: string; commentsCreated: number; filesAnalyzed: number }>(
+      `/api/pull-requests/${prId}/ai-review`,
+      { model }
+    );
+  }
 }
