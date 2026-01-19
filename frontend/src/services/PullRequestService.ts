@@ -1,5 +1,5 @@
 import { ApiClient } from './ApiClient';
-import { PullRequest, Comment, FileDiff } from '../types/api.types';
+import { PullRequest, Comment, FileDiff, Commit } from '../types/api.types';
 
 export class PullRequestService extends ApiClient {
   async getAll(repoId?: string): Promise<PullRequest[]> {
@@ -32,5 +32,10 @@ export class PullRequestService extends ApiClient {
     // For now, we'll use a placeholder endpoint
     const params = { repoId, sourceBranch, targetBranch };
     return this.get<FileDiff[]>('/api/pull-requests/diff', params);
+  }
+
+  async getCommits(repoId: string, sourceBranch: string, targetBranch: string): Promise<Commit[]> {
+    const params = { repoId, sourceBranch, targetBranch };
+    return this.get<Commit[]>('/api/pull-requests/commits', params);
   }
 }

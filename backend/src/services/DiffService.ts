@@ -27,6 +27,14 @@ export interface FileDiff {
   hunks: DiffHunk[];
 }
 
+export interface Commit {
+  hash: string;
+  shortHash: string;
+  message: string;
+  author: string;
+  date: Date;
+}
+
 export class DiffService {
   /**
    * Get diff between two branches for a specific repository
@@ -214,5 +222,57 @@ export class DiffService {
     }
 
     return files;
+  }
+
+  /**
+   * Get commits between two branches for a specific repository
+   */
+  static async getCommits(
+    repoId: string,
+    sourceBranch: string,
+    targetBranch: string
+  ): Promise<Commit[]> {
+    // Validate repoId to prevent path traversal
+    const repoPath = validateRepoPath(repoId, REPOS_DIR);
+    if (!repoPath) {
+      throw new Error('Invalid repository ID');
+    }
+
+    if (!fs.existsSync(repoPath)) {
+      throw new Error('Repository not found');
+    }
+
+    // Validate branch names to prevent command injection
+    if (!validateBranchName(sourceBranch)) {
+      throw new Error('Invalid source branch name');
+    }
+    if (!validateBranchName(targetBranch)) {
+      throw new Error('Invalid target branch name');
+    }
+
+    const git: SimpleGit = simpleGit(repoPath);
+
+    try {
+      // Fetch both branches if needed
+      await git.fetch('origin', sourceBranch).catch(() => {});
+      await git.fetch('origin', targetBranch).catch(() => {});
+
+      // Get commits that are in sourceBranch but not in targetBranch
+      // Using range syntax: targetBranch..sourceBranch shows commits in sourceBranch not in targetBranch
+      const log = await git.log([
+        `origin/${targetBranch}..origin/${sourceBranch}`
+      ]);
+
+      return log.all.map(commit => ({
+        hash: commit.hash,
+        shortHash: commit.hash.substring(0, 7),
+        message: commit.message,
+        author: commit.author_name,
+        date: new Date(commit.date)
+      }));
+    } catch (error: any) {
+      const parsedError = GitErrorParser.parseSimpleGitError(error, sourceBranch);
+      throw new Error(parsedError.message);
+    }
   }
 }

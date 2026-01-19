@@ -166,3 +166,11 @@ export interface FileChange {
   additions: number;
   deletions: number;
 }
+
+export interface Commit {
+  hash: string;
+  shortHash: string;
+  message: string;
+  author: string;
+  date: Date | string;
+}

@@ -17,6 +17,8 @@ import { Button } from './ui/button';
 import { usePullRequests } from '../hooks/usePullRequests';
 import { PullRequest, Comment } from '../types/api.types';
 import { PullRequestService } from '../services/PullRequestService';
+import { CommitsTab } from './CommitsTab';
+import { ChangesTab } from './ChangesTab';
 
 type Tab = 'Overview' | 'Commits' | 'Pipelines' | 'Changes';
 
@@ -262,9 +264,20 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
-          <div className="max-w-4xl space-y-12">
-            {activeTab === 'Overview' && (
+        {activeTab === 'Changes' ? (
+          <ChangesTab
+            pr={{
+              id: currentPR.id,
+              repoId: currentPR.repoId,
+              sourceBranch: currentPR.sourceBranch,
+              targetBranch: currentPR.targetBranch
+            }}
+          />
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
+              <div className="max-w-4xl space-y-12">
+                {activeTab === 'Overview' && (
               <>
                 <section>
                   <Label>Description</Label>
@@ -375,12 +388,14 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
             )}
 
             {activeTab === 'Commits' && (
-              <section>
-                <Label>Commits</Label>
-                <div className="mt-4 p-4 border border-zinc-800 bg-zinc-900/30 rounded-lg text-center">
-                  <p className="text-[11px] font-mono text-zinc-500 italic">Commits tab coming soon</p>
-                </div>
-              </section>
+              <CommitsTab
+                pr={{
+                  id: currentPR.id,
+                  repoId: currentPR.repoId,
+                  sourceBranch: currentPR.sourceBranch,
+                  targetBranch: currentPR.targetBranch
+                }}
+              />
             )}
 
             {activeTab === 'Pipelines' && (
@@ -392,34 +407,12 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
               </section>
             )}
 
-            {activeTab === 'Changes' && (
-              <section>
-                <Label>Changes</Label>
-                <div className="mt-4 space-y-4">
-                  {currentPR.filesChanged && currentPR.filesChanged.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-[11px] font-mono text-zinc-500 mb-4">
-                        {currentPR.filesChanged.length} file{currentPR.filesChanged.length !== 1 ? 's' : ''} changed
-                      </p>
-                      {currentPR.filesChanged.map((file, idx) => (
-                        <div key={idx} className="p-4 border border-zinc-800 bg-zinc-900/30 rounded-lg">
-                          <p className="text-[11px] font-mono text-zinc-300">{file}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 border border-zinc-800 bg-zinc-900/30 rounded-lg text-center">
-                      <p className="text-[11px] font-mono text-zinc-500 italic">No files changed</p>
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
-          </div>
-        </div>
+                )}
+              </div>
+            </div>
 
-        {/* RIGHT SIDEBAR */}
-        <aside className="w-72 border-l border-zinc-800 bg-zinc-950/20 p-6 overflow-y-auto no-scrollbar">
+            {/* RIGHT SIDEBAR */}
+            <aside className="w-72 border-l border-zinc-800 bg-zinc-950/20 p-6 overflow-y-auto no-scrollbar">
           <div className="space-y-2">
             <MetadataRow label="Assignee" value={currentPR.author} icon={Users} onEdit={() => {}} />
             <MetadataRow label="Reviewer" value="None" icon={Users} onEdit={() => {}} />
@@ -437,6 +430,8 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
             </div>
           </div>
         </aside>
+          </>
+        )}
       </div>
     </div>
   );

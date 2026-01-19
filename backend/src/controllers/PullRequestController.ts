@@ -84,4 +84,21 @@ export class PullRequestController {
       res.status(500).json({ error: (error as Error).message });
     }
   }
+
+  static async getCommits(req: Request, res: Response) {
+    try {
+      const { repoId, sourceBranch, targetBranch } = req.query;
+      if (!repoId || !sourceBranch || !targetBranch) {
+        return res.status(400).json({ error: 'repoId, sourceBranch, and targetBranch are required' });
+      }
+      const commits = await DiffService.getCommits(
+        repoId as string,
+        sourceBranch as string,
+        targetBranch as string
+      );
+      res.json(commits);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
 }

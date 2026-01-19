@@ -4,9 +4,9 @@
 
 ## Current Status
 
-**Phase**: Phase 4 In Progress
+**Phase**: Phase 4 Complete
 **Last Updated**: 2026-01-19
-**Last Step Completed**: Phase 4.2 - Implemented Overview tab with description and activity timeline
+**Last Step Completed**: Phase 4.4 - Created ChangesTab with FileTree + DiffViewer layout
 
 ---
 
@@ -34,8 +34,8 @@
 ### Phase 4: Merge Request Detail View
 - [x] 4.1 Refactor MergeRequestsView to use real API data
 - [x] 4.2 Implement Overview tab with description and timeline
-- [ ] 4.3 Create CommitsTab component with commit list
-- [ ] 4.4 Create ChangesTab with FileTree + DiffViewer layout
+- [x] 4.3 Create CommitsTab component with commit list
+- [x] 4.4 Create ChangesTab with FileTree + DiffViewer layout
 
 ### Phase 5: AI Review Integration
 - [ ] 5.1 Add AI Review trigger button to PR detail header
@@ -70,6 +70,13 @@
 | `frontend/src/components/DiffLine.tsx` | Created | Individual diff line with comment hover/click |
 | `frontend/src/components/InlineComment.tsx` | Created | Inline comment component with severity badges |
 | `frontend/src/components/MergeRequestsView.tsx` | Modified | Refactored to use real API data with usePullRequests hook |
+| `backend/src/services/DiffService.ts` | Modified | Added getCommits method to fetch commits between branches |
+| `backend/src/controllers/PullRequestController.ts` | Modified | Added getCommits controller method |
+| `backend/src/routes/pullRequest.routes.ts` | Modified | Added /commits route |
+| `frontend/src/types/api.types.ts` | Modified | Added Commit type |
+| `frontend/src/services/PullRequestService.ts` | Modified | Added getCommits method |
+| `frontend/src/components/CommitsTab.tsx` | Created | Commits tab component with commit list display |
+| `frontend/src/components/ChangesTab.tsx` | Created | Changes tab with FileTreePanel + DiffViewer layout |
 
 ---
 
@@ -95,7 +102,7 @@ _Record any blockers or issues encountered._
 
 _Brief summary of what was being worked on and next steps._
 
-**Next Step**: Continue with Phase 4.3 - Create CommitsTab component with commit list
+**Next Step**: Continue with Phase 5 - AI Review Integration
 
 **Important Files to Review**:
 - `plans/gitlab-clone-implementation.md` - Full implementation plan
