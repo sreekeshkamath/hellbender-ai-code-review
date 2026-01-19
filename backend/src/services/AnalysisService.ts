@@ -257,11 +257,13 @@ Return ONLY valid JSON, no markdown formatting.`;
         vulnerabilities: [...vulnerabilities, ...securityIssues]
       };
     } catch (error) {
-      const errorMessage = (error as Error).message;
+      // Normalize error message to ensure it's always a string
+      const errorMessage = ((error as Error)?.message ?? String(error ?? '')).toString();
       console.error(`OpenRouter API error for ${filePath}:`, errorMessage);
 
       // If it's a timeout, provide a more specific message
-      if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+      const lowerErrorMessage = errorMessage.toLowerCase();
+      if (lowerErrorMessage.includes('timeout') || lowerErrorMessage.includes('etimedout')) {
         return {
           score: 70,
           issues: [],
