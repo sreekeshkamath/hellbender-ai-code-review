@@ -3,6 +3,7 @@ node_modules/
 temp/
 data/repo-mappings.json
 data/repos.json.enc
+backend/data/
 frontend/dist/
 frontend/node_modules/
 backend/dist/
