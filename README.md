@@ -1,4 +1,4 @@
-# NOTE: 
+# NOTE:
 This application was entirely Vibe Coded! Use it at your own risk and preferably not in a sensitive or production codebase.
 
 # AI Code Reviewer
@@ -31,27 +31,21 @@ An AI-powered code review application that analyzes your codebase for issues, vu
 
 1. Clone the repository:
 ```bash
-cd ai-code-reviewer
+git clone https://github.com/sreekeshkamath/hellbender-ai-code-review.git
+cd hellbender-ai-code-review
 ```
 
-2. Install backend dependencies:
+2. Install all dependencies:
 ```bash
-npm install
+npm run install:all
 ```
 
-3. Install frontend dependencies:
-```bash
-cd client
-npm install
-cd ..
-```
-
-4. Configure environment variables:
+3. Configure environment variables:
 ```bash
 cp .env.example .env
 ```
 
-5. Edit `.env` and add your OpenRouter API key:
+4. Edit `.env` and add your OpenRouter API key:
 ```
 OPENROUTER_API_KEY=your_api_key_here
 ```
@@ -61,7 +55,7 @@ OPENROUTER_API_KEY=your_api_key_here
 ### Development Mode (both servers)
 
 ```bash
-npm run dev:all
+npm run dev
 ```
 
 This will start:
@@ -72,12 +66,19 @@ This will start:
 
 Backend only:
 ```bash
-npm run dev
+npm run dev --prefix backend
 ```
 
 Frontend only:
 ```bash
 npm run client
+```
+
+### Production Build
+
+```bash
+npm run build
+npm start
 ```
 
 ## Usage
@@ -116,6 +117,9 @@ The application automatically detects common security issues including:
 
 ## API Endpoints
 
+### GET /health
+Health check endpoint.
+
 ### POST /api/repo/clone
 Clone a repository for analysis.
 
@@ -151,6 +155,15 @@ Request body:
 }
 ```
 
+### GET /api/saved-repos
+Get all saved repositories.
+
+### POST /api/saved-repos
+Save a repository for quick access.
+
+### DELETE /api/saved-repos/:id
+Delete a saved repository.
+
 ## Environment Variables
 
 | Variable | Description | Default |
@@ -161,12 +174,54 @@ Request body:
 | PORT | Backend server port | 3001 |
 | SITE_URL | Site URL for OpenRouter referrer | http://localhost:5173 |
 
+## Architecture
+
+This application uses a monorepo structure:
+
+**Note**: Legacy CommonJS files (`server.js`, `routes/`, `utils/`) are obsolete and not used. The active backend implementation is in the `backend/` directory (TypeScript). The npm scripts (`start`, `dev`) point to the `backend/` directory.
+
+```plaintext
+hellbender-ai-code-review/
+├── backend/               # TypeScript backend (active implementation)
+│   ├── src/
+│   │   ├── controllers/  # Route handlers
+│   │   ├── services/     # Business logic classes
+│   │   ├── models/       # TypeScript interfaces
+│   │   ├── routes/       # Express route definitions
+│   │   └── utils/        # Helper functions
+│   └── package.json
+├── frontend/              # React TypeScript application
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   ├── hooks/        # Custom React hooks
+│   │   ├── services/     # API client classes
+│   │   ├── types/        # TypeScript types
+│   │   └── utils/        # Helper functions
+│   └── package.json
+├── data/                  # Data storage
+│   └── repo-mappings.json # Repository ID mappings
+├── temp/                  # Temporary cloned repositories
+└── package.json
+```
+
 ## Tech Stack
 
 - **Backend**: Node.js, Express, simple-git
-- **Frontend**: React, Vite, Axios
+- **Frontend**: React, TypeScript, Vite, Axios, Tailwind CSS
 - **AI**: OpenRouter API (access to multiple models)
-- **Styling**: Custom CSS
+- **Testing**: Jest
+- **Styling**: Tailwind CSS, Radix UI components
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run install:all` | Install all dependencies (root, backend, frontend) |
+| `npm run dev` | Start both backend and frontend in development mode |
+| `npm run dev:all` | Start both backend and frontend in development mode (alias for dev) |
+| `npm run client` | Start only the frontend in development mode |
+| `npm run build` | Build both backend and frontend for production |
+| `npm start` | Start the production server |
 
 ## License
 
