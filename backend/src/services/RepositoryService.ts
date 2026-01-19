@@ -6,6 +6,7 @@ import { Repository } from '../models/Repository';
 import { FileInfo } from '../models/FileInfo';
 import { FileService } from './FileService';
 import { RepositoryMappingService } from './RepositoryMappingService';
+import { MRCloneService } from './MRCloneService';
 import { REPOS_DIR, GITHUB_ACCESS_TOKEN } from '../config/constants';
 import { GitErrorParser } from '../utils/GitErrorParser';
 import { validateRepoPath, validateFilePath, validateBranchName } from '../utils/PathValidator';
@@ -30,7 +31,7 @@ export class RepositoryService {
   private static isGitHubUrl(url: string): boolean {
     if (!url || typeof url !== 'string') return false;
     const trimmedUrl = url.trim();
-    
+
     // Check for GitHub domains in various URL formats:
     // - https://github.com/...
     // - https://www.github.com/...
@@ -41,7 +42,7 @@ export class RepositoryService {
       /^git@github\.com:/i,
       /^git:\/\/github\.com\//i,
     ];
-    
+
     return githubPatterns.some(pattern => pattern.test(trimmedUrl));
   }
 
@@ -117,7 +118,7 @@ export class RepositoryService {
           console.warn(`Failed to clean up directory ${repoPath}:`, cleanupError.message);
         }
       }
-      
+
       // Use structured error parser for simple-git errors
       const parsedError = GitErrorParser.parseSimpleGitError(error, branch);
       throw new Error(parsedError.message);
@@ -125,6 +126,18 @@ export class RepositoryService {
 
     // Store the mapping
     RepositoryMappingService.setRepoId(repoUrl, branch, repoId);
+
+    // Clone associated MRs if source repo exists
+    const sourceRepoId = this.getSourceRepoId(repoUrl, branch);
+    if (sourceRepoId && sourceRepoId !== repoId) {
+      try {
+        const clonedMRs = await MRCloneService.cloneMergeRequests(sourceRepoId, repoId);
+        console.log(`Cloned ${clonedMRs.length} merge requests from source repository`);
+      } catch (error) {
+        // Log error but don't fail the clone operation
+        console.error('Error cloning merge requests:', error);
+      }
+    }
 
     const filePaths = FileService.getAllFiles(repoPath);
     const files: FileInfo[] = filePaths.map(f => ({
@@ -138,6 +151,14 @@ export class RepositoryService {
       files,
       cached: false
     };
+  }
+
+  /**
+   * Gets the source repository ID for a given URL and branch.
+   * Returns null if no source repository exists.
+   */
+  static getSourceRepoId(repoUrl: string, branch: string): string | null {
+    return RepositoryMappingService.getRepoId(repoUrl, branch);
   }
 
   static async sync(repoId: string, repoUrl: string, branch: string = 'main', accessToken?: string): Promise<Repository> {
@@ -161,7 +182,7 @@ export class RepositoryService {
     }
 
     const git: SimpleGit = simpleGit(repoPath);
-    
+
     // Only apply GitHub access token to GitHub URLs to prevent credential leakage
     // This is a security measure: we should never send GitHub tokens to non-GitHub servers
     let authRepoUrl = repoUrl;
@@ -181,7 +202,7 @@ export class RepositoryService {
       // will use the old URL from .git/config, ignoring the authRepoUrl we constructed
       const remotes = await git.getRemotes(true);
       const originExists = remotes.some(remote => remote.name === 'origin');
-      
+
       if (originExists) {
         // Update existing remote URL with the authenticated URL
         await git.remote(['set-url', 'origin', authRepoUrl]);
@@ -189,14 +210,14 @@ export class RepositoryService {
         // Add remote if it doesn't exist
         await git.addRemote('origin', authRepoUrl);
       }
-      
+
       // Now fetch from 'origin' - this will use the updated authenticated URL
       await git.fetch('origin', branch);
       await git.reset(['--hard', `origin/${branch}`]);
     } catch (error: any) {
       // Use structured error parser for simple-git errors
       const parsedError = GitErrorParser.parseSimpleGitError(error, branch);
-      
+
       // Throw with the parsed error message (already user-friendly)
       throw new Error(parsedError.message);
     }
