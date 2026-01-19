@@ -2,6 +2,48 @@
 
 > **Purpose**: Transform Hellbender from "LLM reviewing files" into a repo-aware, context-engineered code agent.
 
+---
+
+## About This Project
+
+**This is a learning-first, production-ready project.**
+
+I'm a student building this to understand how modern AI code tools (like Cursor, Copilot, Cody) actually work under the hood. The goal is to learn by building—not just use AI tools, but understand the engineering that makes them smart.
+
+At the same time, this isn't a toy. I want Hellbender to be reliable enough for me and my coworkers to use on real codebases. So every component is designed with production quality in mind: proper error handling, incremental indexing, structured logging, and testable architecture.
+
+### What You'll Learn Building This
+
+| Concept | Why It Matters | Where You'll See It |
+|---------|----------------|---------------------|
+| **AST Parsing** | How code editors understand structure, not just text | Tree-sitter integration (Task 2) |
+| **Embeddings & Vector Search** | How semantic search finds "similar" code by meaning | Embeddings module (Task 4) |
+| **Graph Databases** | How to model relationships (imports, dependencies) | SQLite dependency tables (Task 2-3) |
+| **Retrieval-Augmented Generation (RAG)** | How LLMs get context they weren't trained on | Retrieval engine (Task 5) |
+| **Token Budgeting** | Why LLMs have limits and how to work within them | Context packer (Task 6) |
+| **Multi-pass LLM Orchestration** | How to break complex tasks into focused subtasks | Review orchestrator (Task 7) |
+| **Service Architecture** | How to split a system into cooperating services | Backend + Context Engine separation |
+
+### Learning Tips
+
+1. **Read the "Why" comments** — I've added explanations throughout the code snippets
+2. **Run each task's acceptance test** — Seeing it work builds intuition
+3. **Inspect the SQLite database** — Use `sqlite3` CLI to explore what got stored
+4. **Add console.logs liberally** — Trace the data flow through the system
+5. **Break things on purpose** — See what error handling catches (and what it doesn't)
+
+### Production Quality Checklist
+
+Every task should meet these standards before moving on:
+
+- [ ] Handles errors gracefully (no crashes on bad input)
+- [ ] Logs enough to debug issues in production
+- [ ] Validates inputs at service boundaries
+- [ ] Has at least one acceptance test that proves it works
+- [ ] Doesn't block the main thread for long operations
+
+---
+
 ## Architecture Overview
 
 ```mermaid
