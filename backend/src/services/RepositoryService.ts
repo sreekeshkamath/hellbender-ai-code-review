@@ -75,6 +75,18 @@ export class RepositoryService {
     try {
       await git.clone(authRepoUrl, repoPath, cloneOptions);
     } catch (error: any) {
+      // Clean up the directory if it was created during the failed clone attempt
+      // This prevents orphaned directories from accumulating in the temp folder
+      if (fs.existsSync(repoPath)) {
+        try {
+          fs.rmSync(repoPath, { recursive: true, force: true });
+          console.log(`Cleaned up failed clone directory: ${repoPath}`);
+        } catch (cleanupError: any) {
+          // Log cleanup errors but don't fail the operation - the main error is more important
+          console.warn(`Failed to clean up directory ${repoPath}:`, cleanupError.message);
+        }
+      }
+      
       // Use structured error parser for simple-git errors
       const parsedError = GitErrorParser.parseSimpleGitError(error, branch);
       throw new Error(parsedError.message);
