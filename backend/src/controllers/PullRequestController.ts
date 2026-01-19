@@ -233,4 +233,17 @@ export class PullRequestController {
       res.status(500).json({ error: (error as Error).message });
     }
   }
+
+  static async delete(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+      const result = PullRequestService.delete(id);
+      if (!result.success) {
+        return res.status(403).json({ error: result.error });
+      }
+      res.json({ message: 'Pull Request deleted successfully' });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
 }

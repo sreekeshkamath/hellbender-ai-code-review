@@ -3,7 +3,8 @@ import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { PullRequest } from '../models/PullRequest';
 import { Comment } from '../models/Comment';
-import { DATA_DIR } from '../config/constants';
+import { DATA_DIR, MR_DELETION_BLOCKED_MESSAGE } from '../config/constants';
+import { MRSyncService } from './MRSyncService';
 
 const PULL_REQUESTS_FILE = path.join(DATA_DIR, 'pull-requests.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
@@ -96,14 +97,17 @@ export class PullRequestService {
       description: data.description || '',
       sourceBranch: data.sourceBranch || 'main',
       targetBranch: data.targetBranch || 'main',
-      filesChanged: data.filesChanged || []
+      filesChanged: data.filesChanged || [],
+      originalPrId: data.originalPrId,
+      clonedPrIds: data.clonedPrIds || [],
+      isCloned: data.isCloned ?? false
     };
     prs.push(newPR);
     this.savePullRequests(prs);
     return newPR;
   }
 
-  static updateStatus(id: string, status: 'open' | 'merged' | 'closed'): PullRequest | null {
+  static updateStatus(id: string, status: 'open' | 'merged' | 'closed', skipSync = false): PullRequest | null {
     const prs = this.loadPullRequests();
     const index = prs.findIndex(pr => pr.id === id);
     if (index === -1) {
@@ -112,6 +116,14 @@ export class PullRequestService {
     prs[index].status = status;
     prs[index].updatedAt = new Date();
     this.savePullRequests(prs);
+
+    // Sync status to linked MRs
+    if (!skipSync) {
+      MRSyncService.syncStatus(id, status, false).catch(error => {
+        console.error('Error syncing status:', error);
+      });
+    }
+
     return prs[index];
   }
 
@@ -120,7 +132,7 @@ export class PullRequestService {
     return comments.filter(comment => comment.prId === prId);
   }
 
-  static addComment(data: Partial<Comment>): Comment {
+  static addComment(data: Partial<Comment>, skipSync = false): Comment {
     const comments = this.loadComments();
     const newComment: Comment = {
       id: data.id || uuidv4(),
@@ -131,10 +143,61 @@ export class PullRequestService {
       filePath: data.filePath,
       line: data.line,
       type: data.type || 'user',
-      severity: data.severity
+      severity: data.severity,
+      originalCommentId: data.originalCommentId
     };
     comments.push(newComment);
     this.saveComments(comments);
+
+    // Sync comment to linked MRs (only if not already a synced comment)
+    if (!skipSync && !data.originalCommentId) {
+      MRSyncService.syncComments(data.prId || '', newComment, false).catch(error => {
+        console.error('Error syncing comment:', error);
+      });
+    }
+
     return newComment;
+  }
+
+  /**
+   * Deletes a pull request with validation for cloned MRs
+   * Returns success status and optional error message
+   */
+  static delete(prId: string): { success: boolean; error?: string } {
+    const prs = this.loadPullRequests();
+    const prIndex = prs.findIndex(pr => pr.id === prId);
+
+    if (prIndex === -1) {
+      return { success: false, error: 'Pull Request not found' };
+    }
+
+    const pr = prs[prIndex];
+
+    // Block deletion if this is a cloned MR (has originalPrId)
+    if (pr.originalPrId) {
+      return { success: false, error: MR_DELETION_BLOCKED_MESSAGE };
+    }
+
+    // If this is an original PR with clones, orphan the clones first
+    if (pr.clonedPrIds && pr.clonedPrIds.length > 0) {
+      for (const cloneId of pr.clonedPrIds) {
+        const cloneIndex = prs.findIndex(p => p.id === cloneId);
+        if (cloneIndex !== -1) {
+          prs[cloneIndex].originalPrId = undefined;
+          prs[cloneIndex].isCloned = false;
+        }
+      }
+    }
+
+    // Delete associated comments
+    const comments = this.loadComments();
+    const filteredComments = comments.filter(comment => comment.prId !== prId);
+    this.saveComments(filteredComments);
+
+    // Delete the PR
+    prs.splice(prIndex, 1);
+    this.savePullRequests(prs);
+
+    return { success: true };
   }
 }

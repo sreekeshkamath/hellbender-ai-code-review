@@ -23,3 +23,6 @@ export function getEncryptionKey(): string {
   return key;
 }
 export const SITE_URL = process.env.SITE_URL || 'http://localhost:3001';
+
+export const MR_DELETION_BLOCKED_MESSAGE =
+  'This Merge Request is linked to an existing PR. Please delete the original PR before deleting this cloned Merge Request.';
