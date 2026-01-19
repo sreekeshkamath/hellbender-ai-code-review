@@ -10,6 +10,7 @@ import { ActivityLog } from './components/ActivityLog';
 import { RepositoryView } from './components/RepositoryView';
 import { AnalysisResults } from './components/AnalysisResults';
 import { MergeRequestsView } from './components/MergeRequestsView';
+import { CreateMRView } from './components/CreateMRView';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { useActivityLog } from './hooks/useActivityLog';
 import { useModels } from './hooks/useModels';
@@ -17,7 +18,7 @@ import { useRepository } from './hooks/useRepository';
 import { useAnalysis } from './hooks/useAnalysis';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'audit' | 'merge-requests'>('audit');
+  const [currentView, setCurrentView] = useState<'audit' | 'merge-requests' | 'create-merge-request'>('audit');
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [consoleHeight, setConsoleHeight] = useState(192); // Default h-48 is 192px
   const [isResizing, setIsResizing] = useState(false);
@@ -225,9 +226,17 @@ function App() {
                 <ActivityLog />
               </div>
             </div>
+          ) : currentView === 'merge-requests' ? (
+            <div className="flex-1 bg-black">
+              <MergeRequestsView onCreateNew={() => setCurrentView('create-merge-request')} />
+            </div>
           ) : (
             <div className="flex-1 bg-black">
-              <MergeRequestsView />
+              <CreateMRView
+                onBack={() => setCurrentView('merge-requests')}
+                onCreated={() => setCurrentView('merge-requests')}
+                initialRepoId={repoId}
+              />
             </div>
           )}
         </div>

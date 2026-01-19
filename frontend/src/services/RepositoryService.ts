@@ -30,4 +30,12 @@ export class RepositoryService extends ApiClient {
     }
     return this.get<{ files: FileInfo[] }>(`/api/repo/changed-files/${repoId}?${params.toString()}`);
   }
+
+  async getBranches(repoId: string): Promise<{ branches: string[] }> {
+    return this.get<{ branches: string[] }>(`/api/repo/branches/${repoId}`);
+  }
+
+  async getAllCloned(): Promise<{ repos: Array<{ repoId: string; repoUrl: string; branch: string }> }> {
+    return this.get<{ repos: Array<{ repoId: string; repoUrl: string; branch: string }> }>('/api/repo/cloned');
+  }
 }

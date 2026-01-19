@@ -114,4 +114,25 @@ export class RepositoryController {
       res.status(500).json({ error: (error as Error).message });
     }
   }
+
+  static async getBranches(req: Request, res: Response): Promise<void> {
+    try {
+      const repoId = req.params.repoId as string;
+      const branches = await RepositoryService.getBranches(repoId);
+      res.json({ branches });
+    } catch (error) {
+      console.error('Get branches error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
+
+  static async getAllCloned(req: Request, res: Response): Promise<void> {
+    try {
+      const repos = await RepositoryService.getAllCloned();
+      res.json({ repos });
+    } catch (error) {
+      console.error('Get cloned repos error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
 }

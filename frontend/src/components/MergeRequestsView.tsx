@@ -26,6 +26,7 @@ import { PullRequest, Comment } from '../types/api.types';
 import { PullRequestService } from '../services/PullRequestService';
 import { CommitsTab } from './CommitsTab';
 import { ChangesTab } from './ChangesTab';
+import { CreateMRDialog } from './CreateMRDialog';
 import { cn } from '../lib/utils';
 
 type Tab = 'Overview' | 'Commits' | 'Pipelines' | 'Changes';
@@ -33,6 +34,7 @@ type Tab = 'Overview' | 'Commits' | 'Pipelines' | 'Changes';
 interface MergeRequestsViewProps {
   prId?: string;
   repoId?: string;
+  onCreateNew?: () => void;
 }
 
 function formatTimeAgo(date: Date | string): string {
@@ -81,12 +83,14 @@ function getStatusBadgeVariant(status: PullRequest['status']) {
   }
 }
 
-export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} as MergeRequestsViewProps) {
+export function MergeRequestsView({ prId, repoId, onCreateNew }: MergeRequestsViewProps = {} as MergeRequestsViewProps) {
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isAIReviewing, setIsAIReviewing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Remove dialog state as we are using separate page now
+  // const [isCreateMRDialogOpen, setIsCreateMRDialogOpen] = useState(false);
   const { pullRequests, selectedPR, isLoading, error, fetchPRs, selectPR } = usePullRequests(repoId);
   const { selectedModel } = useModels();
 
@@ -326,7 +330,10 @@ export function MergeRequestsView({ prId, repoId }: MergeRequestsViewProps = {} 
             <Button variant="outline" size="sm" className="h-8 border-zinc-800 text-[9px] font-black uppercase tracking-widest hover:bg-zinc-900 hidden sm:flex">
               Add a to-do item
             </Button>
-            <Button className="h-8 bg-white text-black text-[9px] font-black uppercase tracking-widest hover:bg-zinc-200 hidden sm:flex">
+            <Button
+              onClick={() => onCreateNew?.()}
+              className="h-8 bg-white text-black text-[9px] font-black uppercase tracking-widest hover:bg-zinc-200 hidden sm:flex"
+            >
               New Merge Request
             </Button>
             <Button

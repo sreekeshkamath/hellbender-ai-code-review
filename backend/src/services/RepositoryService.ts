@@ -7,9 +7,17 @@ import { FileInfo } from '../models/FileInfo';
 import { FileService } from './FileService';
 import { RepositoryMappingService } from './RepositoryMappingService';
 import { MRCloneService } from './MRCloneService';
+import { SavedRepositoryService } from './SavedRepositoryService';
 import { REPOS_DIR, GITHUB_ACCESS_TOKEN } from '../config/constants';
 import { GitErrorParser } from '../utils/GitErrorParser';
 import { validateRepoPath, validateFilePath, validateBranchName } from '../utils/PathValidator';
+
+export interface ClonedRepositoryInfo {
+  repoId: string;
+  repoUrl: string;
+  branch: string;
+  repoPath: string;
+}
 
 // Ensure REPOS_DIR exists before any operations
 if (!fs.existsSync(REPOS_DIR)) {
@@ -70,6 +78,35 @@ export class RepositoryService {
 
       console.log(`Reusing existing repository: ${repoUrl} (${branch}) -> ${repoId}`);
 
+      // Ensure repository is saved to SavedRepository database
+      try {
+        const existingRepos = SavedRepositoryService.getAll();
+        const existing = existingRepos.find(r => r.url.toLowerCase() === repoUrl.toLowerCase() && r.branch === branch);
+
+        if (existing) {
+          // Update existing repository with repoId and cloned status if needed
+          if (existing.repoId !== repoId || !existing.cloned) {
+            SavedRepositoryService.update(existing.id, {
+              repoId,
+              cloned: true
+            });
+            console.log(`Updated existing saved repository: ${repoUrl} (${branch})`);
+          }
+        } else {
+          // Create new saved repository entry for already-cloned repo
+          SavedRepositoryService.add({
+            url: repoUrl,
+            branch,
+            repoId,
+            cloned: true
+          });
+          console.log(`Saved existing cloned repository to database: ${repoUrl} (${branch})`);
+        }
+      } catch (error) {
+        // Log error but don't fail the operation
+        console.error('Error saving repository to database:', error);
+      }
+
       return {
         repoId,
         repoPath,
@@ -102,7 +139,7 @@ export class RepositoryService {
     // simple-git properly escapes arguments, making it safe from injection attacks
     // Always specify the branch explicitly to ensure we clone the requested branch,
     // even if it's 'main' (the repo's default branch might be 'master' or something else)
-    const cloneOptions: string[] = ['--depth', '1', '--branch', branch, '--single-branch'];
+    const cloneOptions: string[] = ['--depth', '1', '--branch', branch];
 
     try {
       await git.clone(authRepoUrl, repoPath, cloneOptions);
@@ -126,6 +163,33 @@ export class RepositoryService {
 
     // Store the mapping
     RepositoryMappingService.setRepoId(repoUrl, branch, repoId);
+
+    // Auto-save repository to SavedRepository database
+    try {
+      const existingRepos = SavedRepositoryService.getAll();
+      const existing = existingRepos.find(r => r.url.toLowerCase() === repoUrl.toLowerCase() && r.branch === branch);
+
+      if (existing) {
+        // Update existing repository with repoId and cloned status
+        SavedRepositoryService.update(existing.id, {
+          repoId,
+          cloned: true
+        });
+        console.log(`Updated existing saved repository: ${repoUrl} (${branch})`);
+      } else {
+        // Create new saved repository entry
+        SavedRepositoryService.add({
+          url: repoUrl,
+          branch,
+          repoId,
+          cloned: true
+        });
+        console.log(`Saved cloned repository to database: ${repoUrl} (${branch})`);
+      }
+    } catch (error) {
+      // Log error but don't fail the clone operation
+      console.error('Error saving repository to database:', error);
+    }
 
     // Clone associated MRs if source repo exists
     const sourceRepoId = this.getSourceRepoId(repoUrl, branch);
@@ -284,17 +348,37 @@ export class RepositoryService {
       throw new Error('Invalid repository ID');
     }
 
-    // Remove from mappings
+    // Remove from mappings and get repo info for SavedRepository deletion
     const mappings = RepositoryMappingService.getAllMappings();
+    let repoUrl: string | null = null;
+    let branch: string | null = null;
+
     for (const [key, mappedRepoId] of Object.entries(mappings)) {
       if (mappedRepoId === repoId) {
         const parsed = RepositoryMappingService.parseKey(key);
         if (parsed) {
+          repoUrl = parsed.repoUrl;
+          branch = parsed.branch;
           RepositoryMappingService.removeMapping(parsed.repoUrl, parsed.branch);
         } else {
           console.warn(`Invalid mapping key format: ${key}`);
         }
         break;
+      }
+    }
+
+    // Remove from SavedRepository database
+    if (repoUrl && branch) {
+      try {
+        const savedRepos = SavedRepositoryService.getAll();
+        const savedRepo = savedRepos.find(r => r.repoId === repoId || (r.url.toLowerCase() === repoUrl!.toLowerCase() && r.branch === branch));
+        if (savedRepo) {
+          SavedRepositoryService.delete(savedRepo.id);
+          console.log(`Removed repository from SavedRepository database: ${repoUrl} (${branch})`);
+        }
+      } catch (error) {
+        // Log error but don't fail the delete operation
+        console.error('Error removing repository from SavedRepository database:', error);
       }
     }
 
@@ -378,5 +462,79 @@ export class RepositoryService {
       const parsedError = GitErrorParser.parseSimpleGitError(error, targetBranch);
       throw new Error(parsedError.message);
     }
+  }
+
+  /**
+   * Get all branches (local and remote) for a repository
+   */
+  static async getBranches(repoId: string): Promise<string[]> {
+    // Validate repoId to prevent path traversal
+    const repoPath = validateRepoPath(repoId, REPOS_DIR);
+    if (!repoPath) {
+      throw new Error('Invalid repository ID');
+    }
+
+    if (!fs.existsSync(repoPath)) {
+      throw new Error('Repository not found');
+    }
+
+    const git: SimpleGit = simpleGit(repoPath);
+
+    try {
+      // Get the remote URL first
+      const remotes = await git.getRemotes(true);
+      const origin = remotes.find(r => r.name === 'origin');
+
+      let remoteBranches: string[] = [];
+      if (origin) {
+        // Try ls-remote to get all branches from origin without fetching everything
+        const lsRemote = await git.listRemote(['--heads', 'origin']);
+        remoteBranches = lsRemote.split('\n')
+          .filter(line => line.trim())
+          .map(line => {
+            const parts = line.split('refs/heads/');
+            return parts.length > 1 ? parts[1].trim() : '';
+          })
+          .filter(Boolean);
+      }
+
+      // Get local branches too
+      const branchSummary = await git.branch();
+      const localBranches = branchSummary.all.map(b => b.replace(/^remotes\/origin\//, '').replace(/^HEAD -> /, '').replace(/^remotes\//, ''));
+
+      // Combine and unique
+      const allBranches = Array.from(new Set([...localBranches, ...remoteBranches]));
+
+      return allBranches
+        .filter(b => b !== 'HEAD')
+        .sort();
+    } catch (error: any) {
+      const parsedError = GitErrorParser.parseSimpleGitError(error, '');
+      throw new Error(parsedError.message);
+    }
+  }
+
+  /**
+   * Get all repositories currently cloned on disk
+   */
+  static async getAllCloned(): Promise<ClonedRepositoryInfo[]> {
+    const mappings = RepositoryMappingService.getAllMappings();
+    const clonedRepos: ClonedRepositoryInfo[] = [];
+
+    for (const [key, repoId] of Object.entries(mappings)) {
+      if (RepositoryMappingService.repoExists(repoId, REPOS_DIR)) {
+        const parsed = RepositoryMappingService.parseKey(key);
+        if (parsed) {
+          clonedRepos.push({
+            repoId,
+            repoUrl: parsed.repoUrl,
+            branch: parsed.branch,
+            repoPath: path.join(REPOS_DIR, repoId)
+          });
+        }
+      }
+    }
+
+    return clonedRepos;
   }
 }
