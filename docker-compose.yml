@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hellbender-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hellbender}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-hellbender}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hellbender} -d ${POSTGRES_DB:-hellbender}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hellbender-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: hellbender-backend
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${PORT:-3001}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://hellbender:password@postgres:5432/hellbender}
+      - PERSISTENT_REPOS_PATH=${PERSISTENT_REPOS_PATH:-/data/repos}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SITE_URL=${SITE_URL:-http://localhost:5173}
+    volumes:
+      - ./backend/src:/app/src
+      - repos_data:/data/repos
+      - ./backend/temp:/app/temp
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hellbender-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: hellbender-frontend
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - hellbender-network
+
+networks:
+  hellbender-network:
+    driver: bridge
+
+volumes:
+  pg_data:
+    driver: local
+  repos_data:
+    driver: local

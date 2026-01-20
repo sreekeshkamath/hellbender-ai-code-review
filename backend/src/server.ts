@@ -6,6 +6,8 @@ import { validateEnvironment } from './config/environment';
 import repositoryRoutes from './routes/repository.routes';
 import reviewRoutes from './routes/review.routes';
 import savedReposRoutes from './routes/savedRepos.routes';
+import persistentRepoRoutes from './routes/persistentRepo.routes';
+import reviewSessionRoutes from './routes/reviewSession.routes';
 
 validateEnvironment();
 
@@ -18,6 +20,8 @@ app.use(express.json());
 app.use('/api/repo', repositoryRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/saved-repos', savedReposRoutes);
+app.use('/api/persistent-repos', persistentRepoRoutes);
+app.use('/api/review-sessions', reviewSessionRoutes);
 
 app.use('/temp', express.static(path.join(__dirname, '../temp')));
 

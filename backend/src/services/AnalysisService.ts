@@ -274,14 +274,219 @@ Return ONLY valid JSON, no markdown formatting.`;
         };
       }
 
+        return {
+          score: 70,
+          issues: [],
+          strengths: [],
+          summary: 'Analysis completed with limited AI insights due to API error.',
+          vulnerabilities,
+          error: errorMessage
+        };
+      }
+    }
+
+  /**
+   * Analyze code with diff context for branch comparison reviews
+   * 
+   * This method is specifically designed for reviewing code changes between branches.
+   * It focuses the AI analysis on the diff context and asks for line numbers
+   * relative to the new/changed file.
+   * 
+   * @param content The file content from the source branch
+   * @param filePath The path to the file
+   * @param model The AI model to use
+   * @param diffContext The unified diff context string showing changes
+   * @returns Promise<AnalysisResult> Analysis results with issues
+   */
+  static async analyzeCodeWithDiff(
+    content: string,
+    filePath: string,
+    model: string | undefined,
+    diffContext: string
+  ): Promise<AnalysisResult> {
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error('OPENROUTER_API_KEY environment variable is required');
+    }
+
+    const openai = new (OpenAI as any)({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY,
+      timeout: 120000, // 2 minutes per file
+      defaultHeaders: {
+        'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3001',
+        'X-Title': 'AI Code Reviewer'
+      }
+    });
+
+    const vulnerabilities = VulnerabilityScanner.detectVulnerabilities(content);
+
+    const prompt = `You are an expert code reviewer analyzing code changes. 
+
+File: ${filePath}
+
+DIFF CONTEXT (showing what changed between branches):
+${diffContext || 'No changes detected - full file content follows:'}
+
+FULL FILE CONTENT:
+${content}
+
+Please analyze the CHANGES shown in the diff context and provide your review. Focus on what changed and why it might be problematic.
+
+Provide your analysis in the following JSON format:
+{
+  "overallScore": <overall code quality score 0-100 based on changes>,
+  "summary": "<2-3 sentence summary of the changes and their quality>",
+  "issues": [
+    {
+      "line": <line number in the NEW file where the issue appears>,
+      "type": "bug|performance|style|security|bestpractice",
+      "severity": "info|warning|error|critical",
+      "message": "<brief description of the issue>",
+      "code": "<the exact line or snippet where the issue is, with context>",
+      "suggestion": "<how to fix or improve>"
+    }
+  ]
+}
+
+Focus your review on:
+1. What changed - analyze the additions and deletions
+2. Potential bugs introduced by the changes
+3. Security concerns in the new/modified code
+4. Performance implications of changes
+5. Code style and best practices in the changed code
+6. Whether the changes make sense in context
+
+For line numbers, use the line numbers from the NEW/CHANGED file (the lines shown after + in the diff).
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+    try {
+      const lineCount = content.split('\n').length;
+
+      // Log safe metadata
+      logAnalysisMetadata(filePath, model || 'default', content.length, lineCount);
+
+      // Log diff context only when debug logging is enabled
+      if (diffContext && isDebugLoggingEnabled()) {
+        const diffPreview = diffContext.length > 500
+          ? diffContext.substring(0, 500) + '...'
+          : diffContext;
+        console.log(`  Diff context preview (first 500 chars):`);
+        console.log(`  ${'─'.repeat(60)}`);
+        console.log(diffPreview.split('\n').slice(0, 15).map((line: string) => `  ${line}`).join('\n'));
+        console.log(`  ${'─'.repeat(60)}`);
+      }
+
+      const startTime = Date.now();
+
+      const completion = await openai.chat.completions.create({
+        model: model || 'openrouter/default',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert code reviewer analyzing code changes. Always respond with valid JSON only. Focus on the changes shown in diff context.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 4000,
+        temperature: 0.3
+      });
+
+      const elapsed = Date.now() - startTime;
+      logResponseReceived(filePath, elapsed);
+
+      // Defensive guard: ensure completion and content exist
+      if (!completion || !completion.choices || !completion.choices[0] || !completion.choices[0].message) {
+        throw new Error('Invalid response structure from AI model: missing completion data');
+      }
+
+      const responseContent = completion.choices[0].message.content;
+      if (!responseContent || typeof responseContent !== 'string') {
+        throw new Error('Invalid response structure from AI model: missing or invalid content');
+      }
+
+      const responseText = responseContent;
+      let analysis;
+
+      try {
+        // Extract JSON from response
+        let cleanResponse = responseText.trim();
+        const firstBrace = cleanResponse.indexOf('{');
+        const lastBrace = cleanResponse.lastIndexOf('}');
+
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          cleanResponse = cleanResponse.substring(firstBrace, lastBrace + 1);
+        }
+
+        analysis = JSON.parse(cleanResponse);
+      } catch (parseError) {
+        logResponseContent(responseText, 'Failed to parse JSON response in analyzeCodeWithDiff');
+        throw new Error('Invalid JSON response from AI model');
+      }
+
+      // Extract security issues
+      const securityIssues = (analysis.issues || [])
+        .filter((issue: { type?: string }) => issue.type === 'security')
+        .map((issue: { line: number; type: string; severity: string; code: string }) => ({
+          line: issue.line,
+          type: issue.type,
+          severity: issue.severity,
+          code: issue.code
+        }));
+
       return {
-        score: 70,
-        issues: [],
-        strengths: [],
+        ...analysis,
+        vulnerabilities: [...vulnerabilities, ...securityIssues]
+      };
+    } catch (error) {
+      // Normalize error message
+      const errorMessage = ((error as Error)?.message ?? String(error ?? '')).toString();
+      console.error(`OpenRouter API error for ${filePath} (with diff):`, errorMessage);
+
+      const lowerErrorMessage = errorMessage.toLowerCase();
+      if (lowerErrorMessage.includes('timeout') || lowerErrorMessage.includes('etimedout')) {
+        return {
+          overallScore: 70,
+          summary: 'Analysis timed out. The AI model took too long to respond.',
+          issues: [],
+          vulnerabilities,
+          error: 'Request timeout - AI model response exceeded time limit'
+        };
+      }
+
+      return {
+        overallScore: 70,
         summary: 'Analysis completed with limited AI insights due to API error.',
+        issues: [],
         vulnerabilities,
         error: errorMessage
       };
     }
   }
+}
+
+/**
+ * Type for analysis result returned by analyzeCodeWithDiff
+ */
+interface AnalysisResult {
+  overallScore: number;
+  summary: string;
+  issues: Array<{
+    line: number;
+    type: string;
+    severity: string;
+    message: string;
+    code: string;
+    suggestion: string;
+  }>;
+  vulnerabilities: Array<{
+    line: number;
+    type: string;
+    severity: string;
+    code: string;
+  }>;
+  error?: string;
 }
